@@ -4,7 +4,9 @@
 1. **Company:** a genuine product startup that passes `targets.company_bar`, and not in `targets.exclude_company_types`.
    - It must pass validation (`validation.md`): a funding class in `targets.funding_filter` with evidence, and no scam signals.
    - For staff count, use LinkedIn, the team page, or the YC team size from `scripts/check_company.py`.
-2. **Hiring now:** a live role matching `targets.role_types` and `targets.experience`, posted in the last ~60 days, or a founder post asking for engineers. Record the URL and the posted date. A role that requires 2+ years is a FAIL, even if the company is great.
+2. **Hiring now, and the user is eligible:** a live role matching `targets.role_types` and `targets.experience`, posted in the last ~60 days, or a founder post asking for engineers. Record the URL and the posted date.
+   - Run `scripts/eligibility.py <jd> --intern|--fulltime`. The batch must include the user's graduation year; the degree, start date and duration must fit `[eligibility]`; and the resume must show most of the JD's core skills.
+   - A role that requires 2+ years, or a batch that excludes the user, is a FAIL even if the company is great.
 3. **Pay evidence:**
    - Pass at a stipend of at least `pay.intern_stipend_min`, or a full-time / PPO offer of at least `pay.fulltime_min_lpa`, or the USD equivalent for remote roles.
    - Evidence sources: the job description, YC WaaS or Wellfound salary bands, Instahyre or Cutshort bands, Glassdoor or AmbitionBox intern stipends, LeetCode or Reddit comp posts.

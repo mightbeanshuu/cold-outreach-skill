@@ -9,6 +9,8 @@ Mark each item as required or optional so the user can skip the optional ones.
 - Availability: intern now, full-time after graduating, or both, and from when.
 - CGPA, only if they're happy for it to be shared when a recruiter asks.
 
+- Eligibility (`[eligibility]`): earliest internship start, any limit on internship length, earliest full-time joining month, on-site OK or remote only, and anything a JD's eligibility clause might exclude (backlogs, gap year). Research only keeps roles that fit these and the graduation year.
+
 Why: the first line of every email ("I'm X, a final-year ... at Y") and the signature come from here. Recruiters who reply often ask for the CGPA first.
 
 ## 2. Resume(s) (required)

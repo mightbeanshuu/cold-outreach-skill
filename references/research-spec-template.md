@@ -12,9 +12,14 @@ Round brief answers: funding {funding_filter} · pay {bar} · contact fallback {
 
 ## Run every company through these gates IN ORDER. Stop at the first FAIL and write the TSV line.
 
-### G1 Live role
+### G1 Live role the user is eligible for
 Role in {targets.role_types}; experience {targets.experience}; posted within ~60 days, or a founder post asking for engineers.
-Locations: {targets.locations}. Record the URL and posted date. "2+ years required" = FAIL.
+Locations: {targets.locations}. Record the URL and posted date.
+Then `python3 {skill}/scripts/eligibility.py <jd url or saved jd.txt> --intern|--fulltime`:
+- NOT-ELIGIBLE = FAIL (batch excludes grad year {identity.grad_year}, 2+ years, master's/PhD only, start date the user can't meet, resume covers < 40% of JD skills).
+- CHECK = read the JD yourself and decide; write the reason in the TSV.
+User's eligibility: grad {identity.grad_year}, {identity.degree}; intern from {eligibility.intern_available_from}; full-time from {eligibility.fulltime_join_from}; notes: {eligibility.backlog_or_gap_notes}.
+For a founder post with no JD, judge eligibility from the post and the user's resume; don't pitch a role they couldn't do.
 
 ### G2 Company validation (references/validation.md)
 1. `python3 {skill}/scripts/check_company.py <domain>`: any RED flag = FAIL.

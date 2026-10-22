@@ -14,6 +14,15 @@ location = "City, India"
 cgpa = ""                                # only if the user wants it shared when asked
 availability = "I graduate in 2027 and can join as a 6-month intern now or full-time in 2027."
 
+# What the user is eligible for. scripts/eligibility.py checks every JD against this, the grad year above,
+# and the skills their resume (resumes.source_html), eng_facts and GitHub repos show.
+[eligibility]
+intern_available_from = "now"            # "now" or "YYYY-MM"
+intern_max_months = 0                    # 0 = no limit; e.g. 6 if college allows only a 6-month internship
+fulltime_join_from = "2027-07"           # earliest full-time joining month (after graduation)
+onsite_ok = true                         # false = remote-only roles pass
+backlog_or_gap_notes = ""                # anything a JD's eligibility clause might exclude; agents read it
+
 [links]
 github = "github.com/you"
 linkedin = "linkedin.com/in/you"

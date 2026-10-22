@@ -8,7 +8,7 @@ Each company goes through seven gates, cheapest first, and only companies that p
 
 | Gate | Check |
 |---|---|
-| G1 Live role | 0-1 yr, posted in the last ~60 days, or a founder asking for engineers |
+| G1 Live + eligible | posted in the last ~60 days; the batch includes your graduation year; start date, degree, 0-1 yr and your resume's skills fit the JD |
 | G2 Company validation | scam signals (registry holds, no MX, pay-to-join, "for our client", copied JDs) and a funding class with evidence: YC / VC / angel / bootstrapped |
 | G3 Pay bar | stipend or CTC at or above your bar, with a link; unknown pay only for YC/VC |
 | G4 Contact | published site/JD → GitHub org, members, commits → ContactOut / SignalHire in your Chrome (opt-in, founders/CTOs only) |
@@ -62,7 +62,7 @@ SKILL.md                      workflow + hard rules (loaded when the skill trigg
 PROMPTS.md                    copy-paste prompts for every stage
 references/                   intake, targeting, validation, contacts, pitch, tailored-resume, sending-chrome,
                               followups, research-spec-template
-scripts/                      check_company, github_projects, render_resume, upload_resume, mkurl, lint_email,
+scripts/                      eligibility, check_company, github_projects, render_resume, upload_resume, mkurl, lint_email,
                               dedupe, log_sent, mark_outcome, stats, check_links, ats_scan, build_fu_queue, mkfu,
                               mkjs (+ js/ send, bounce scan, follow-up runner)
 assets/                       profile.example.toml, SEND-LOG.header.csv

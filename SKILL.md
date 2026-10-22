@@ -1,6 +1,6 @@
 ---
 name: cold-outreach
-description: End-to-end cold-email job outreach to startups for any student or new grad. Runs a gated pipeline per company — live role, company validation (scam checks + YC / VC / angel / bootstrapped funding class), pay bar with evidence, verified contact (site → GitHub commits → ContactOut / SignalHire via Claude in Chrome), best-fit project from the user's own GitHub, an "unrejectable" personalised pitch, and a tailored one-page resume — then sends from the user's college Gmail through Claude in Chrome with bounce kill switch, SEND-LOG logging, reply triage and in-thread follow-ups. Use whenever the user asks to cold mail / email startups or founders, "mine hiredoor / YC / wellfound and send", "do another round", "only YC", "send the held ones", "send follow-ups / FU1 / FU2", "check bounces or replies", "continue mailing", or sets up outreach for a new person, even if they never say "skill" or "pipeline".
+description: End-to-end cold-email job outreach to startups for any student or new grad. Runs a gated pipeline per company — live role the user is eligible for (graduation batch, start date, resume skills), company validation (scam checks + YC / VC / angel / bootstrapped funding class), pay bar with evidence, verified contact (site → GitHub commits → ContactOut / SignalHire via Claude in Chrome), best-fit project from the user's own GitHub, an "unrejectable" personalised pitch, and a tailored one-page resume — then sends from the user's college Gmail through Claude in Chrome with bounce kill switch, SEND-LOG logging, reply triage and in-thread follow-ups. Use whenever the user asks to cold mail / email startups or founders, "mine hiredoor / YC / wellfound and send", "do another round", "only YC", "send the held ones", "send follow-ups / FU1 / FU2", "check bounces or replies", "continue mailing", or sets up outreach for a new person, even if they never say "skill" or "pipeline".
 ---
 
 # Cold outreach pipeline
@@ -18,7 +18,8 @@ This skill is generic: every personal fact comes from the user's `profile.toml` 
 ```
  intake ─► round brief ─► research (per company, cheapest gate first) ─► reveals ─► review ─► send ─► verify ─► log ─► replies ─► follow-ups
                                │
-                               ├─ G1 Live role        0-1 yr, posted ≤ 60 days, or founder asking for engineers
+                               ├─ G1 Live + eligible  posted ≤ 60 days; batch includes the user's grad year; start date,
+                               │                      degree, 0-1 yr and resume skills fit (scripts/eligibility.py)
                                ├─ G2 Company valid    scam checks + funding class (YC / VC / angel / bootstrapped)   references/validation.md
                                ├─ G3 Pay bar          evidence URL ≥ profile bar; UNKNOWN only for YC/VC             references/targeting.md
                                ├─ G4 Contact          site/JD → GitHub org/members/commits → NEED-REVEAL            references/contacts.md
@@ -56,6 +57,7 @@ Scripts are in `scripts/`, stdlib Python plus `gh`, `curl`, `whois`, `dig` and C
 |---|---|---|
 | `check_company.py <domains>` | G2 | site status, domain age, registry holds, MX, YC batch/status/team |
 | `ats_scan.py <slugs>` | G1 | live roles on Lever / Greenhouse / Ashby |
+| `eligibility.py <jd> --intern\|--fulltime` | G1 | grad batch, experience, degree, start date, JD skills vs resume |
 | `dedupe.py --email --company` | G4 | checks SEND-LOG, EXCLUDE, live threads |
 | `github_projects.py --match "<kw>"` | G5 | ranks the user's own repos against the company's stack |
 | `lint_email.py <round>` | G6 | format, words, banned phrases, COMPANY/FIT/PAY rules, reveal opt-in, college sender, resume link |
@@ -143,6 +145,7 @@ Each comes from a real failure; the reason is there so you can judge edge cases.
 - **Daily cap.** At most `sending.daily_cap` new cold emails a day (default 40). Follow-ups are separate but also batched.
 - **The user decides to send.** Draft and queue freely; send only after the user has said go for this batch. If a permission prompt or the auto-mode classifier denies a send, stop, say what's queued, and ask. Never route around a denial.
 - **The user's own browser and accounts only.** Never type passwords or OTPs, never create accounts. Check `list_connected_browsers` every session.
+- **Only roles the user is eligible for.** The JD's batch must include the user's graduation year, and the start date, degree, experience and core skills must match what their resume shows. A great company with a 2025-batch-only or 2+ years role is a FAIL: emailing it wastes the founder's time and the user's credibility.
 - **Startups only.** No big tech, MNC campus inboxes, quant/HFT, IT services or agencies, staffing firms or pay-to-intern outfits unless the user names one. Those go through referrals and portals.
 - **Respect the lists.** Skip `targets.never_contact`, `targets.live_threads` and any company with a reply in progress. Never reuse an address in SEND-LOG.
 - **Truth in the resume and pitch.** Tailoring reorders and rewords true facts; it never adds a skill, metric or role. GitHub projects appear only as the repo itself shows them.
