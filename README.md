@@ -36,6 +36,8 @@ Then it sends from your **college Gmail** through Claude in Chrome, checks bounc
 
 `review.py` prints each round as a table plus every draft in a box. All questions are asked in the terminal.
 
+**Live side panel.** `hud/outreach-hud` is a Claude Code mod that keeps the same dashboard docked beside the chat, refreshing every 3 seconds. It opens when the skill loads, or with `/outreach`. Start Claude with `claude --plugin-dir ~/.claude/skills/cold-outreach/hud/outreach-hud`.
+
 ## Install
 
 ```sh
@@ -85,5 +87,6 @@ references/                   terminal-prompts (every question the skill asks), 
 scripts/                      ui (boxes/tables/bars), stats (dashboard), log_followup, preflight, review, eligibility, check_company, github_projects, render_resume, upload_resume, mkurl, lint_email,
                               dedupe, log_sent, mark_outcome, stats, check_links, ats_scan, build_fu_queue, mkfu,
                               mkjs (+ js/ send, bounce scan, follow-up runner)
+hud/outreach-hud/             live side-panel mod (Claude Code plugin)
 assets/                       profile.example.toml, SEND-LOG.header.csv, FOLLOWUP-LOG.header.csv
 ```
