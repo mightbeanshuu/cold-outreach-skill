@@ -19,7 +19,8 @@ This skill is generic: every personal fact comes from the user's `profile.toml` 
  intake ─► round brief ─► research (per company, cheapest gate first) ─► reveals ─► review ─► send ─► verify ─► log ─► replies ─► follow-ups
                                │
                                ├─ G1 Live + eligible  posted ≤ 60 days; batch includes the user's grad year; start date,
-                               │                      degree, 0-1 yr and resume skills fit (scripts/eligibility.py)
+                               │                      degree, experience range (default 0-3 yrs) and resume skills fit
+                               │                      (scripts/eligibility.py)
                                ├─ G2 Company valid    scam checks + funding class (YC / VC / angel / bootstrapped)   references/validation.md
                                ├─ G3 Pay bar          evidence URL ≥ profile bar; UNKNOWN only for YC/VC             references/targeting.md
                                ├─ G4 Contact          site/JD → GitHub org/members/commits → NEED-REVEAL            references/contacts.md
@@ -82,12 +83,15 @@ Every proof point must come from the user or a document they gave you. Never inv
 
 ## Step 1: Round brief (ask, then write SPEC.md)
 
-Unless the user's message already settles them, ask these in **one** AskUserQuestion call, with the profile defaults as the first option:
+Unless the user's message already settles them, ask these in **one** AskUserQuestion call, with the profile value as the first option:
 
-1. **Funding filter**: only YC / YC + VC-funded / any validated startup incl. bootstrapped (`targets.funding_filter`).
-2. **Pay bar**: profile bar / loosen it / stricter. Quote the profile's numbers in the option text.
-3. **Contact fallback**: free routes only / also ContactOut and SignalHire via Chrome for founders and CTOs (`tools.paid_contact_tools`, budget `reveal_budget_per_round`).
-4. **Sources and size**: e.g. YC WaaS + ATS, hiredoor + Wellfound, funding news; and how many PASS to aim for.
+1. **Experience range** the JDs may ask for: **0-3 years (Recommended)** / 0-1 only / 0-2 / up to 5. Saved as `eligibility.exp_min_years` / `exp_max_years`. Explain in the option text that 0-3 catches startup "1-3 yrs" roles that still hire strong freshers.
+2. **Funding filter**: only YC / YC + VC-funded / any validated startup incl. bootstrapped (`targets.funding_filter`).
+3. **Pay bar**: profile bar / loosen it / stricter. Quote the profile's numbers in the option text.
+4. **Contact fallback**: free routes only / also ContactOut and SignalHire via Chrome for founders and CTOs (`tools.paid_contact_tools`, budget `reveal_budget_per_round`).
+
+Sources and target size come from the user's message, or the profile's `tools.sources` and a default of about 15 PASS. Ask about them only if the user seems to want something specific.
+If the user picks a different experience range or funding filter than the profile, ask whether to save it to profile.toml or use it for this round only.
 
 Then:
 1. Create `rounds/<date>-<name>/`.
@@ -145,7 +149,7 @@ Each comes from a real failure; the reason is there so you can judge edge cases.
 - **Daily cap.** At most `sending.daily_cap` new cold emails a day (default 40). Follow-ups are separate but also batched.
 - **The user decides to send.** Draft and queue freely; send only after the user has said go for this batch. If a permission prompt or the auto-mode classifier denies a send, stop, say what's queued, and ask. Never route around a denial.
 - **The user's own browser and accounts only.** Never type passwords or OTPs, never create accounts. Check `list_connected_browsers` every session.
-- **Only roles the user is eligible for.** The JD's batch must include the user's graduation year, and the start date, degree, experience and core skills must match what their resume shows. A great company with a 2025-batch-only or 2+ years role is a FAIL: emailing it wastes the founder's time and the user's credibility.
+- **Only roles the user is eligible for.** The JD's batch must include the user's graduation year, and the start date, degree, experience and core skills must match what their resume shows. A great company with a batch that excludes the user, or a JD minimum above their experience range, is a FAIL: emailing it wastes the founder's time and the user's credibility.
 - **Startups only.** No big tech, MNC campus inboxes, quant/HFT, IT services or agencies, staffing firms or pay-to-intern outfits unless the user names one. Those go through referrals and portals.
 - **Respect the lists.** Skip `targets.never_contact`, `targets.live_threads` and any company with a reply in progress. Never reuse an address in SEND-LOG.
 - **Truth in the resume and pitch.** Tailoring reorders and rewords true facts; it never adds a skill, metric or role. GitHub projects appear only as the repo itself shows them.

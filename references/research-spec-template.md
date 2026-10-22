@@ -8,15 +8,15 @@ Write `rounds/<date>-<name>/SPEC.md` from this template, filling every `{...}` f
 # Round {name} ({date})
 
 User's ask for this round: "{verbatim words}"
-Round brief answers: funding {funding_filter} · pay {bar} · contact fallback {free only | + contactout/signalhire} · sources {sources} · target {cap} PASS
+Round brief answers: experience {exp_min}-{exp_max} yrs · funding {funding_filter} · pay {bar} · contact fallback {free only | + contactout/signalhire} · sources {sources} · target {cap} PASS
 
 ## Run every company through these gates IN ORDER. Stop at the first FAIL and write the TSV line.
 
 ### G1 Live role the user is eligible for
-Role in {targets.role_types}; experience {targets.experience}; posted within ~60 days, or a founder post asking for engineers.
+Role in {targets.role_types}; JD experience minimum within {eligibility.exp_min_years}-{eligibility.exp_max_years} years; posted within ~60 days, or a founder post asking for engineers.
 Locations: {targets.locations}. Record the URL and posted date.
 Then `python3 {skill}/scripts/eligibility.py <jd url or saved jd.txt> --intern|--fulltime`:
-- NOT-ELIGIBLE = FAIL (batch excludes grad year {identity.grad_year}, 2+ years, master's/PhD only, start date the user can't meet, resume covers < 40% of JD skills).
+- NOT-ELIGIBLE = FAIL (batch excludes grad year {identity.grad_year}, JD minimum above {eligibility.exp_max_years} years, master's/PhD only, start date the user can't meet, resume covers < 40% of JD skills).
 - CHECK = read the JD yourself and decide; write the reason in the TSV.
 User's eligibility: grad {identity.grad_year}, {identity.degree}; intern from {eligibility.intern_available_from}; full-time from {eligibility.fulltime_join_from}; notes: {eligibility.backlog_or_gap_notes}.
 For a founder post with no JD, judge eligibility from the post and the user's resume; don't pitch a role they couldn't do.

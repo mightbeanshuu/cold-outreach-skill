@@ -63,10 +63,13 @@ else:
 
 # 2. Experience
 exp = [int(x) for x in re.findall(r"(\d+)\s*\+?\s*(?:-\s*\d+\s*)?(?:years?|yrs?)\s*(?:of\s*)?(?:\w+\s){0,3}?experience", low)]
-if exp and min(exp) >= 2:
-    bad.append(f"needs {min(exp)}+ years of experience")
-elif exp and min(exp) == 1:
-    check.append("asks for 1 year of experience")
+lo, hi = int(elig.get("exp_min_years", 0)), int(elig.get("exp_max_years", 3))
+if exp and min(exp) > hi:
+    bad.append(f"needs {min(exp)}+ years; user's range is {lo}-{hi}")
+elif exp and min(exp) > 0 and min(exp) == hi:
+    check.append(f"needs {min(exp)} years, at the top of the {lo}-{hi} range: pitch only with strong matching proof")
+elif exp and max(exp) < lo:
+    check.append(f"JD is for {max(exp)} years, below the user's {lo}-{hi} range")
 
 # 3. Degree and enrolment
 if re.search(r"\b(m\.?s\.?|masters?|m\.?tech|ph\.?d)\b[^.]{0,40}\b(only|required|must)\b", low) and \

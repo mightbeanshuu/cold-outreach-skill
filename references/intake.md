@@ -42,7 +42,8 @@ Never add a fact the user didn't give you.
 
 ## 5. Targets (required, defaults offered)
 - Role types and experience band.
-  - Default: SDE/backend/infra/AI, 0 to 1 year, intern or new grad.
+  - Default: SDE/backend/infra/AI, intern or new grad.
+- **Experience range** the JDs may ask for (`eligibility.exp_min_years` / `exp_max_years`). **Recommend 0-3 years**: many startups write "1-3 yrs" but still hire a strong fresher with real projects, while 4+ is a genuinely senior role. Offer 0-1 for a strict fresher-only search.
 - Locations and whether remote is OK.
 - Funding filter (`targets.funding_filter`): YC only, YC + VC, or any validated startup including bootstrapped. See `validation.md`.
 - Never-contact list and companies already in conversation (`live_threads`).

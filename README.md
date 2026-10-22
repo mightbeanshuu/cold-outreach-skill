@@ -8,7 +8,7 @@ Each company goes through seven gates, cheapest first, and only companies that p
 
 | Gate | Check |
 |---|---|
-| G1 Live + eligible | posted in the last ~60 days; the batch includes your graduation year; start date, degree, 0-1 yr and your resume's skills fit the JD |
+| G1 Live + eligible | posted in the last ~60 days; the batch includes your graduation year; start date, degree, experience range (you choose; 0-3 yrs recommended) and your resume's skills fit the JD |
 | G2 Company validation | scam signals (registry holds, no MX, pay-to-join, "for our client", copied JDs) and a funding class with evidence: YC / VC / angel / bootstrapped |
 | G3 Pay bar | stipend or CTC at or above your bar, with a link; unknown pay only for YC/VC |
 | G4 Contact | published site/JD → GitHub org, members, commits → ContactOut / SignalHire in your Chrome (opt-in, founders/CTOs only) |

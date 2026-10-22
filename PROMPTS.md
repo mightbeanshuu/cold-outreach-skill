@@ -12,7 +12,8 @@ Set up the cold-outreach skill for me.
 - Achievements (with numbers): <3-5 lines>
 - Projects (what it is, one technical detail, one number): <3-6 lines>
 - Graduation: <month year>. Intern from: <now / month>. Full-time from: <month year>. Max internship length: <none / 6 months>
-- Roles: <SDE intern / backend / AI / ...>, 0-1 yr. Locations: <India / remote>
+- Experience range the JDs may ask for: <0-3 yrs (recommended) | 0-1 | 0-2>
+- Roles: <SDE intern / backend / AI / ...>. Locations: <India / remote>
 - Pay bar: stipend >= <₹X>/month or full-time >= <Y> LPA
 - Funding filter: <YC only | YC + VC | any validated incl. bootstrapped>
 - Contact fallback: <free only | also ContactOut and SignalHire, I'm signed in to both in Chrome>
@@ -23,7 +24,7 @@ Ask me in one message for anything missing, then run the readiness checklist.
 
 ```
 Run a cold-outreach round "<name>" with the full pipeline:
-1. Live roles I'm eligible for only: my graduation batch (<2027>), my start dates, 0-1 yr, and skills my resume actually shows; posted in the last 60 days, from <sources: YC WaaS, ATS boards, hiredoor, Wellfound, funding news>.
+1. Live roles I'm eligible for only: my graduation batch (<2027>), my start dates, JDs asking <0-3> years at most, and skills my resume actually shows; posted in the last 60 days, from <sources: YC WaaS, ATS boards, hiredoor, Wellfound, funding news>.
 2. Validate every company: no scam signals, funding class with evidence (<only YC | YC + VC | incl. bootstrapped>).
 3. Pay bar: >= <₹X>/month stipend or <Y> LPA with an evidence link; unknown pay only for YC/VC.
 4. Contacts: published site/JD → GitHub org, members, recent commits → then ContactOut and SignalHire in my Chrome for founders/CTOs only.

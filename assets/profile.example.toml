@@ -17,6 +17,10 @@ availability = "I graduate in 2027 and can join as a 6-month intern now or full-
 # What the user is eligible for. scripts/eligibility.py checks every JD against this, the grad year above,
 # and the skills their resume (resumes.source_html), eng_facts and GitHub repos show.
 [eligibility]
+# Experience range of roles to target, in years required by the JD. Recommended 0-3: wide enough to include
+# "0-2 / 1-3 yrs" startup roles that do hire strong freshers, narrow enough to skip real senior roles.
+exp_min_years = 0
+exp_max_years = 3
 intern_available_from = "now"            # "now" or "YYYY-MM"
 intern_max_months = 0                    # 0 = no limit; e.g. 6 if college allows only a 6-month internship
 fulltime_join_from = "2027-07"           # earliest full-time joining month (after graduation)
@@ -53,7 +57,7 @@ best_window = "Tue-Thu 08:15-10:00"
 
 [targets]
 role_types = ["SDE intern", "backend", "full-stack", "infra / DevOps / SRE / platform", "AI/ML engineer", "data engineer", "new grad SDE-1"]
-experience = "0-1 yr: intern, new grad, fresher, 2026/2027 batch. 2+ yrs required = FAIL"
+experience = "intern, new grad, fresher or junior; JD minimum within [eligibility] exp_min_years..exp_max_years"
 locations = ["India", "India-remote", "global remote hiring from India"]
 # Which funding classes may pass validation (references/validation.md): yc, vc, angel, bootstrapped, govt/grant.
 # "Only YC" -> ["yc"]. UNVERIFIED never passes unless the user overrides it for a round.
