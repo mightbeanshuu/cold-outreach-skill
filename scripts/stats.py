@@ -5,7 +5,7 @@ usage: stats.py [--date YYYY-MM-DD] [--need N] [--workspace WS]
 --need N: exit 1 if sending N more new emails today would pass the daily max (check before each batch).
 Exit 2 when the kill switch has tripped."""
 import datetime as dt, sys
-from common import ws_arg, load_profile, read_log, read_fu_log, daily_range
+from common import ws_arg, load_profile, read_log, read_fu_log, daily_range, followups_due
 import ui
 
 ws, argv = ws_arg(sys.argv[1:])
@@ -28,12 +28,7 @@ killed = pct > s["bounce_stop_pct"]
 fu_today = [r for r in fus if r["date"] == d and r["result"] == "SENT"]
 
 
-def due(col, lab):
-    return [r for r in rows if r[col] and r[col] <= d and lab not in r["outcome"].upper()
-            and not r["reply"].strip() and not bounced(r)]
-
-
-fu1, fu2 = due("followup1_due", "FU1"), due("followup2_due", "FU2")
+fu1, fu2 = followups_due(rows, prof, "fu1", d)[0], followups_due(rows, prof, "fu2", d)[0]
 replies = [r for r in rows if r["reply"].strip()]
 allb = [r for r in rows if bounced(r)]
 

@@ -4,8 +4,10 @@ from pathlib import Path
 
 LOG_FIELDS = ["date_sent", "company", "person", "email", "subject",
               "followup1_due", "followup2_due", "reply", "outcome"]
-GENERIC_LOCAL = re.compile(r"^(careers?|jobs?|hr|hiring|talent|recruit\w*|hello|hi|hey|info|contact|team|work|people\w*|"
-                           r"founders?|ceo|support|admin|humans?|joinus|namaste|corp|engineering|tech)(\+.*)?$", re.I)
+GENERIC_LOCAL = re.compile(r"^(careers?|jobs?|hr|hiring|hire|hireme|talent\w*|recruit\w*|ta|ta[-_.]?team|hello|hi|hey|info|"
+                           r"contact\w*|connect|intouch|reach\w*|team|work|people\w*|human\w*|makers?|founders?|ceo|"
+                           r"support|admin|joinus|namaste|corp|engineering|tech|apply|resumes?|cv|internships?|"
+                           r"freshers?|opportunit\w*|office|mail|enquir\w*|inquir\w*)(\+.*)?$", re.I)
 
 
 def workspace(arg=None):
@@ -138,3 +140,32 @@ def daily_range(prof):
     hi = int(s.get("daily_cap", 40))
     lo = int(s.get("daily_min", round(hi * 0.75)))
     return min(lo, hi), hi
+
+
+def followups_due(rows, prof, stage, due, window=10, include_generic=False):
+    """The follow-up queue for one stage: (items, Counter of skip reasons). The single rule set used by
+    build_fu_queue.py (to send) and stats.py (to count), so the dashboard's "due" is what would really go out."""
+    import datetime as dt
+    from collections import Counter
+    skip_generic = prof["followup"].get("skip_generic_inboxes", True) and not include_generic
+    live = {x.lower() for x in prof["targets"].get("live_threads", []) + prof["targets"].get("never_contact", [])}
+    col = "followup1_due" if stage == "fu1" else "followup2_due"
+    floor = (dt.date.fromisoformat(due) - dt.timedelta(days=window)).isoformat()
+    queue, why, seen = [], Counter(), set()
+    for r in rows:
+        o, em = r["outcome"].upper(), r["email"].strip().lower()
+        if not r[col] or r[col] > due: continue
+        if not em: why["no address"] += 1; continue
+        if r[col] < floor: why[f"due before {floor} (outside window)"] += 1; continue
+        if em in seen: why["duplicate address"] += 1; continue
+        if "BOUNCE" in o or "REJECT" in o: why["bounced"] += 1; continue
+        if r["reply"].strip(): why["has reply"] += 1; continue
+        if any(r["company"].lower().startswith(x) for x in live): why["live/never list"] += 1; continue
+        if stage.upper() in o: why["already sent this stage"] += 1; continue
+        if stage == "fu2" and "FU1" not in o: why["no FU1 yet"] += 1; continue
+        if skip_generic and is_generic(em): why["generic inbox"] += 1; continue
+        m = re.match(r"(?:Re:\s*)?Application for (.+?) \|", r["subject"])
+        queue.append({"slug": r["company"], "to": em, "subject": r["subject"],
+                      "role": m.group(1) if m else "role I wrote about", "sent": r["date_sent"]})
+        seen.add(em)
+    return queue, why

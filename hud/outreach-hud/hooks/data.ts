@@ -161,6 +161,33 @@ export function parseRound(name: string, tsvs: string[], drafts: number): Round 
   return { name, pass, fail, reveal, apply, drafts, topFail: top ? `${top[0]} ×${top[1]}` : '' }
 }
 
+// Same rules as followups_due() in the skill's scripts/common.py, so the panel's "due" is what would go out.
+const GENERIC = new RegExp('^(careers?|jobs?|hr|hiring|hire|hireme|talent\\w*|recruit\\w*|ta|ta[-_.]?team|hello|hi|hey|info|' +
+  'contact\\w*|connect|intouch|reach\\w*|team|work|people\\w*|human\\w*|makers?|founders?|ceo|' +
+  'support|admin|joinus|namaste|corp|engineering|tech|apply|resumes?|cv|internships?|' +
+  'freshers?|opportunit\\w*|office|mail|enquir\\w*|inquir\\w*)(\\+.*)?$', 'i')
+
+export function dueCount(rows: Record<string, string>[], stage: 'FU1' | 'FU2', today: string,
+  skip: string[], skipGeneric: boolean, windowDays = 10): number {
+  const col = stage === 'FU1' ? 'followup1_due' : 'followup2_due'
+  const floor = localDay(new Date(`${today}T12:00:00`).getTime(), -windowDays)
+  const seen = new Set<string>()
+  let n = 0
+  for (const r of rows) {
+    const o = (r.outcome ?? '').toUpperCase()
+    const em = (r.email ?? '').trim().toLowerCase()
+    const at = r[col] ?? ''
+    if (!at || at > today || !em || at < floor || seen.has(em)) continue
+    if (isBounced(r) || (r.reply ?? '').trim()) continue
+    if (skip.some(x => (r.company ?? '').toLowerCase().startsWith(x))) continue
+    if (o.includes(stage) || (stage === 'FU2' && !o.includes('FU1'))) continue
+    if (skipGeneric && GENERIC.test(em.split('@')[0] ?? '')) continue
+    seen.add(em)
+    n++
+  }
+  return n
+}
+
 export function snapshot(f: Files, now: number, tick: number): Snapshot {
   const rows = parseCsv(f.sendLog)
   const fus = parseCsv(f.fuLog)
@@ -168,9 +195,14 @@ export function snapshot(f: Files, now: number, tick: number): Snapshot {
   const lo = Math.min(hi, Number(tomlValue(f.profile, 'daily_min') ?? Math.round(hi * 0.75)))
   const today = localDay(now)
   const day = rows.filter(r => r.date_sent === today)
-  const due = (col: string, lab: string) =>
-    rows.filter(r => r[col] && r[col] <= today && !(r.outcome ?? '').toUpperCase().includes(lab)
-      && !(r.reply ?? '').trim() && !isBounced(r)).length
+  const prof = parseToml(f.profile)
+  const listOf = (sec: string, key: string) => {
+    const v = prof[sec]?.[key]
+    return Array.isArray(v) ? v.map(x => x.toLowerCase()) : []
+  }
+  const skip = [...listOf('targets', 'live_threads'), ...listOf('targets', 'never_contact')]
+  const skipGeneric = prof.followup?.skip_generic_inboxes !== false
+  const due = (stage: 'FU1' | 'FU2') => dueCount(rows, stage, today, skip, skipGeneric)
   const days: Day[] = []
   for (let i = 6; i >= 0; i--) {
     const d = localDay(now, -i)
@@ -193,8 +225,8 @@ export function snapshot(f: Files, now: number, tick: number): Snapshot {
     todaySent: day.length,
     todayBounced: day.filter(isBounced).length,
     todayFu: fus.filter(r => r.date === today && r.result === 'SENT').length,
-    dueFu1: due('followup1_due', 'FU1'),
-    dueFu2: due('followup2_due', 'FU2'),
+    dueFu1: due('FU1'),
+    dueFu2: due('FU2'),
     replies: rows.filter(r => (r.reply ?? '').trim()).length,
     allSent: rows.length,
     allBounced: rows.filter(isBounced).length,
