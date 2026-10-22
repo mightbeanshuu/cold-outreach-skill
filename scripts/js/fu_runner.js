@@ -1,5 +1,5 @@
 // In-thread follow-up runner for Gmail web. mkfu.py prepends:
-//   const MODE ('dry'|'send'), ME (sending address), ITEMS [{slug,to,subject,role}], TEXT (body with {role}),
+//   const MODE ('dry'|'send'), ME (sending address), ITEMS [{slug,to,subject,role,text?}], TEXT (body with {role}),
 //         SIGN (sign-off block), OWN_COUNT (messages from ME expected already in the thread: 1 for FU1, 2 for FU2)
 // MODE 'dry' types the reply then discards it. Runs in the page in the background; poll window.__fu.results.
 (() => {
@@ -17,9 +17,10 @@
   st.running = true; st.stop = false;
   const me = ME.toLowerCase();
 
-  const body = (greet, role) => {
+  // An item may carry its own `text` (a thread with no named role); otherwise TEXT with {role} filled.
+  const body = (greet, role, text) => {
     const r = /\brole\b/i.test(role) ? role : role + ' role';
-    return `${greet}\n\n${TEXT.replaceAll('{role}', r)}\n\n${SIGN}`;
+    return `${greet}\n\n${(text || TEXT).replaceAll('{role}', r)}\n\n${SIGN}`;
   };
 
   const one = async it => {
@@ -59,7 +60,7 @@
     if (!ed) return 'NO_EDITOR';
     ed.focus();
     await sl(300);
-    document.execCommand('insertText', false, body(greet, it.role));
+    document.execCommand('insertText', false, body(greet, it.role, it.text));
     await sl(600);
     if ((ed.innerText || '').length < 150) return 'BODY_SHORT';
     if (MODE === 'dry') {

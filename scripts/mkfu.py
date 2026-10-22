@@ -24,7 +24,12 @@ if "{new_proof}" in text:
         sys.exit("FU2 text needs --proof: one new, true piece of proof since the first email")
     text = text.replace("{new_proof}", proof)
 sign = f"{fu.get('signoff', 'Thanks,')}\n{ident['name']}\n{ident['college']}, {prof['pitch'].get('degree_short', '')} {ident['grad_year']}".replace(" ,", ",")
-items = [{k: x[k] for k in ("slug", "to", "subject", "role")} for x in json.load(open(qf))[a:b]]
+items = []
+for x in json.load(open(qf))[a:b]:
+    it = {k: x[k] for k in ("slug", "to", "subject", "role")}
+    if x.get("text"):  # a per-item body (e.g. no named role); {new_proof} is filled the same way
+        it["text"] = x["text"].replace("{new_proof}", proof)
+    items.append(it)
 hdr = "const MODE=%s, ME=%s, ITEMS=%s, TEXT=%s, SIGN=%s, OWN_COUNT=%d;" % (
     json.dumps(mode), json.dumps(prof["sending"]["gmail_address"]), json.dumps(items),
     json.dumps(text), json.dumps(sign), 1 if stage == "fu1" else 2)
