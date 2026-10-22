@@ -1,8 +1,7 @@
 # Intake: what to get from the user before the first round
 
-Fill `<workspace>/profile.toml` from `assets/profile.example.toml`.
-Look in the conversation, memory and the user's files first. Then ask for what's missing in **one** message, grouped like the sections below.
-Mark each item as required or optional so the user can skip the optional ones.
+This file explains **why** each input matters. **How** to ask is in `terminal-prompts.md`: the questions go to the user in the terminal through `AskUserQuestion` as soon as the skill loads, pre-filled from the conversation, memory and their files.
+Fill `<workspace>/profile.toml` from `assets/profile.example.toml` as the answers come in.
 
 ## 1. Identity and signature (required)
 - Full name, college, degree, graduation year, phone, city.

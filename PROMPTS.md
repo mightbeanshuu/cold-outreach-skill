@@ -4,6 +4,9 @@ Copy one, fill the `<...>` parts, and paste it into Claude Code. The skill also 
 
 ## 1. First-time setup (new user)
 
+The simplest start is just: `set up cold outreach for me`. The skill checks Claude in Chrome, then asks every question in the terminal.
+To answer everything in one go instead, paste:
+
 ```
 Set up the cold-outreach skill for me.
 - Resume: <public Drive link(s)>, master resume HTML or PDF: <path>

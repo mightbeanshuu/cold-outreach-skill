@@ -28,13 +28,14 @@ cp ~/.claude/skills/cold-outreach/assets/SEND-LOG.header.csv ~/Documents/cold-em
 touch ~/Documents/cold-email/EXCLUDE.txt
 ```
 
-Fill in `profile.toml`. `references/intake.md` explains every field. Or just tell Claude "set up cold outreach for me" and it will ask for what's missing.
+You don't need to fill `profile.toml` by hand. When the skill loads in Claude Code, it first checks that Claude in Chrome is connected, then asks you in the terminal for everything it needs: college mail, resume, GitHub, experience range, pay bar, funding filter, contact fallback and proof points. It writes the profile from your answers. On later runs it shows your saved requirements and asks whether to keep or change them.
 
 You need:
 - Python 3.11 or newer (the scripts use only the standard library), plus `curl`, `whois`, `dig`.
 - The `gh` CLI, for contacts and for scanning your repos.
 - Google Chrome (headless PDF rendering of tailored resumes) and `gcloud` with Drive access for uploading them.
-- The Claude in Chrome extension connected to your browser, with your **college** Gmail signed in (and ContactOut / SignalHire, if you opt in).
+- **Required:** the Claude in Chrome extension connected to Claude Code (`/chrome`), with your **college** Gmail signed in (and ContactOut / SignalHire, if you opt in). The skill stops at the prerequisites without it.
+- `python3 scripts/preflight.py` checks everything local.
 
 ## Use
 
@@ -60,9 +61,9 @@ Your `profile.toml`, SEND-LOG and drafts live in your workspace, outside this re
 ```
 SKILL.md                      workflow + hard rules (loaded when the skill triggers)
 PROMPTS.md                    copy-paste prompts for every stage
-references/                   intake, targeting, validation, contacts, pitch, tailored-resume, sending-chrome,
+references/                   terminal-prompts (every question the skill asks), intake, targeting, validation, contacts, pitch, tailored-resume, sending-chrome,
                               followups, research-spec-template
-scripts/                      eligibility, check_company, github_projects, render_resume, upload_resume, mkurl, lint_email,
+scripts/                      preflight, review, eligibility, check_company, github_projects, render_resume, upload_resume, mkurl, lint_email,
                               dedupe, log_sent, mark_outcome, stats, check_links, ats_scan, build_fu_queue, mkfu,
                               mkjs (+ js/ send, bounce scan, follow-up runner)
 assets/                       profile.example.toml, SEND-LOG.header.csv
