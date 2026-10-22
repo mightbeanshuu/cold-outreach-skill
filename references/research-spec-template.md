@@ -1,6 +1,6 @@
 # Research spec template
 
-Write `rounds/<date>-<name>/SPEC.md` from this template, filling every `{...}` from profile.toml. Quote the user's words for any override. Then give each agent the prompt at the bottom.
+Write `rounds/<date>-<name>/SPEC.md` from this template, filling every `{...}` from profile.toml and the round brief. Quote the user's words for any override. Then give each agent the prompt at the bottom.
 
 ---
 
@@ -8,44 +8,66 @@ Write `rounds/<date>-<name>/SPEC.md` from this template, filling every `{...}` f
 # Round {name} ({date})
 
 User's ask for this round: "{verbatim words}"
+Round brief answers: funding {funding_filter} · pay {bar} · contact fallback {free only | + contactout/signalhire} · sources {sources} · target {cap} PASS
 
-## Target bar (ALL must hold)
-1. Company: {targets.company_bar}. Excluded: {targets.exclude_company_types}.
-2. Hiring now: live role in {targets.role_types}; experience {targets.experience}; posted within ~60 days. Locations: {targets.locations}.
-3. Pay: stipend >= {pay.intern_stipend_min} {pay.currency}/month OR full-time/PPO >= {pay.fulltime_min_lpa} LPA (or USD remote equivalent).
-   Record evidence + URL. PAY: UNKNOWN allowed only for YC / named-VC-backed companies (record the funding evidence){if not unknown_pay_ok_if_funded: " — not allowed this round"}.
-4. Contact: published or verified ONLY, per the ladder: PUBLISHED-JD, PUBLISHED-SITE, PUBLISHED-PKG, GH-ORG, GH-MEMBER, COMMIT-VERIFIED
-   (own org, last 6 months, first-name or first.last style). Never guess patterns, never SMTP-probe, never use LLM-listed or data-broker addresses{paid tools note}.
-   Prefer founder/CTO/eng lead; jobs@/tech@ may be internal groups, prefer careers@/hr@ or named people.
-   No contact found → TSV line `APPLY-LINK <url>`, no folder.
-5. Dedupe: skip any address in {workspace}/SEND-LOG.csv; any company slug in {workspace}/EXCLUDE.txt or any rounds/*/<slug> folder;
-   never_contact {targets.never_contact}; live threads {targets.live_threads}. A company already in SEND-LOG is allowed only with a DIFFERENT verified person and a new pitch, folder `<slug>-2`.
-   Check before writing; never overwrite another agent's folder.
+## Run every company through these gates IN ORDER. Stop at the first FAIL and write the TSV line.
+
+### G1 Live role
+Role in {targets.role_types}; experience {targets.experience}; posted within ~60 days, or a founder post asking for engineers.
+Locations: {targets.locations}. Record the URL and posted date. "2+ years required" = FAIL.
+
+### G2 Company validation (references/validation.md)
+1. `python3 {skill}/scripts/check_company.py <domain>`: any RED flag = FAIL.
+2. Funding class, ONE of: YC-<batch> | VC-<stage> | ANGEL | BOOTSTRAPPED | GOVT/GRANT | UNVERIFIED, with an evidence URL.
+   Allowed this round: {funding_filter}. UNVERIFIED = FAIL.
+3. Scam signals: any RED = FAIL; two or more AMBER = FAIL. Spend at most ~5 minutes per company.
+Excluded types: {targets.exclude_company_types}.
+
+### G3 Pay
+Stipend >= {pay.intern_stipend_min} {pay.currency}/month OR full-time/PPO >= {pay.fulltime_min_lpa} LPA (or USD remote equivalent), with an evidence URL.
+PAY: UNKNOWN allowed only for YC-* or VC-* companies{if not unknown_pay_ok_if_funded: " — not allowed this round"}.
+
+### G4 Contact (references/contacts.md)
+Free ladder only: PUBLISHED-JD, PUBLISHED-SITE, PUBLISHED-PKG, GH-ORG, GH-MEMBER, COMMIT-VERIFIED (own org, last 6 months, 60 days better).
+Never guess patterns, never SMTP-probe, never use LLM-listed addresses. Do NOT open ContactOut or SignalHire yourself.
+Prefer founder/CTO/eng lead at 5-50 people; careers@/hr@ over jobs@/tech@.
+Dedupe first: `python3 {skill}/scripts/dedupe.py --email <addr> --company <slug>`. Skip never_contact {targets.never_contact} and live threads {targets.live_threads}.
+- Nothing found but G1-G3 passed and a founder/CTO is identifiable → TSV `NEED-REVEAL` line:
+  `slug<TAB>company<TAB>NEED-REVEAL<TAB><name><TAB><title><TAB><linkedin url><TAB><domain>` and also write the folder with everything except TO.
+- Nothing found and no named person → TSV `APPLY-LINK <url>`, no folder.
+
+### G5 Best-fit project
+`python3 {skill}/scripts/github_projects.py --match "<their stack + JD keywords, comma-separated>"`.
+Pick the user's single most relevant project from that ranking and from these confirmed facts: {eng_facts}.
+Record it as `FIT: <project> -> <their need> (<source of their need>)`.
+
+### G6 Unrejectable pitch (references/pitch.md)
+{word_min}-{word_max} words. Intro: "I'm {name}, {intro}, writing about the <Role> role."
+Hook: ONE specific, checkable line about their JD / repo / launch, tied to the FIT project.
+Achievement bullets (pick 2-4, each with a number): {hr_bullets}
+TIER ta → no jargon. Ask: "{pitch.ask} {identity.availability}"
+Tail: `Resume: {RESUME_LINK}` for founder/eng (tailored), or the closest variant from {resumes} for ta / GitHub: {links.github} / signature.
+Self-score the 8-point unrejectable test; only write the folder at 8/8.
+
+### G7 Tailored resume (founder/eng only; references/tailored-resume.md)
+Copy {resumes.source_html} to `<slug>/<Name>_Resume_<Company>.html`, put the FIT project first, reword only true facts,
+then `zsh {skill}/scripts/render_resume.sh <html>` until it reports 1 page. Do not upload.
 
 ## Output
-PASS → `{round_dir}/<slug>/email.txt` in exactly the format of references/pitch.md (TO with STATUS + evidence, PAY, ROLE, TIER, RESUME, SUBJECT, BODY).
+PASS → `{round_dir}/<slug>/email.txt` in exactly the format of references/pitch.md (TO, COMPANY, PAY, ROLE, TIER, FIT, RESUME, SUBJECT, BODY) + the tailored HTML/PDF.
 Every company checked → one line appended to `{round_dir}/_research_<agent>.tsv`:
-`slug<TAB>company<TAB>funding<TAB>pay evidence<TAB>contact + status<TAB>PASS | FAIL <reason> | APPLY-LINK <url>`
-Write each folder and TSV line as soon as it's decided.
-
-## Pitch
-{word_min}-{word_max} words, format and rules in references/pitch.md.
-Intro: "I'm {name}, {intro}, writing about the <Role> role."
-Hook: ONE specific, checkable line about their product/repo/JD tied to one project fact below.
-Achievement bullets (pick 2-4): {hr_bullets}
-Project facts you may cite (ONLY these, verbatim facts): {eng_facts}
-TIER ta → no jargon. Ask: "{pitch.ask} {identity.availability}"
-Tail: Resume: <link from RESUME variant: {resumes}> / GitHub: {links.github} / signature.
+`slug<TAB>company<TAB>funding class + evidence<TAB>validation verdict<TAB>pay evidence<TAB>contact + status<TAB>PASS | FAIL <gate> <reason> | APPLY-LINK <url> | NEED-REVEAL ...`
+Write each folder and TSV line as soon as it's decided. Never overwrite another agent's folder.
 
 ## Rules
-Research and write files only. Do NOT open Gmail or send anything. Stop at {cap} PASS folders (your own) or when sources run dry.
-Final message: PASS list (slug, company, to, status, role, pay) + APPLY-LINK list + any lessons (dead sources, bounced-looking contacts).
+Research and write files only. Do NOT open Gmail, send anything, or use ContactOut/SignalHire. Stop at {cap} PASS folders (your own) or when sources run dry.
+Final message: PASS list (slug, company, funding, to, status, role, pay, FIT, score) + NEED-REVEAL list + APPLY-LINK list + validation FAILs with reasons + lessons (dead sources, scam patterns, bounced-looking contacts).
 ```
 
 ---
 
 ## Agent prompt (one per source split)
 
-> You are a research agent for a cold-outreach round. Read `{round_dir}/SPEC.md` and follow it exactly. Your agent name is `{agent}`; your sources are: {sources}. Use web search/fetch, `curl`, and `gh` for contact verification. Write PASS folders and TSV lines incrementally. Do not open Gmail, do not send anything, do not use paid contact tools{unless opted in}. Stop at {cap} PASS.
+> You are a research agent for a cold-outreach round. Read `{round_dir}/SPEC.md` and follow it exactly: take each company through gates G1 to G7 in order and stop at the first FAIL. Your agent name is `{agent}`; your sources are: {sources}. Use web search/fetch, `curl`, `gh`, and the scripts in `{skill}/scripts/`. Read `{skill}/references/validation.md`, `contacts.md`, `pitch.md` and `tailored-resume.md` before the first company. Write PASS folders and TSV lines incrementally. Do not open Gmail, do not send anything, do not use ContactOut or SignalHire. Never invent a fact about the user: cite only the profile's hr_bullets, eng_facts and what their own repos show. Stop at {cap} PASS.
 
 Good source splits for 2 agents: (a) hiredoor + Wellfound + Instahyre/Cutshort, (b) YC WaaS/companies pages + ATS APIs (`scripts/ats_scan.py`) + recent funding news + company sites.

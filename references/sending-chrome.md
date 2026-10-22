@@ -10,7 +10,7 @@ The pieces are: a compose deeplink to prefill the email, then a guarded JS send 
    ```
 2. Run `list_connected_browsers` and select the user's own browser. After a drop, the extension has reconnected to a *different person's* machine before.
 3. Run `tabs_context_mcp`. Open, or reuse at the user's request, a tab on `https://mail.google.com/mail/u/<N>/#inbox`.
-4. **Check the account:** `document.title` must contain `sending.gmail_address`. Account indexes change when the user signs in or out, so look every session and never trust a remembered N.
+4. **Check the account:** `document.title` must contain `sending.gmail_address`, which must be the college address (`sending.college_email_domain`). If the tab shows a personal account, stop: never send cold mail from it. Account indexes change when the user signs in or out, so look every session and never trust a remembered N.
 5. Look for any Gmail banner about unusual activity, sending limits or a suspended account. If there is one, stop and tell the user.
 
 ## Build the compose URL

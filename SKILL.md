@@ -1,154 +1,161 @@
 ---
 name: cold-outreach
-description: End-to-end cold-email job outreach to startups for a student or new grad. Covers intake (resume links, GitHub, proof points, pay bar, target roles), research agents that find live roles with pay evidence and verified contacts, tailored pitch drafting and lint, sending from the user's own Gmail through Claude in Chrome, bounce checks with a kill switch, SEND-LOG/EXCLUDE logging, reply triage and in-thread follow-ups. Use this whenever the user asks to cold mail / email startups or founders, "mine hiredoor / YC / wellfound and send", "do another round", "send the held ones", "send follow-ups / FU1 / FU2", "check bounces or replies", "continue mailing", or sets up outreach for a new person, even if they never say "skill" or "pipeline".
+description: End-to-end cold-email job outreach to startups for any student or new grad. Runs a gated pipeline per company — live role, company validation (scam checks + YC / VC / angel / bootstrapped funding class), pay bar with evidence, verified contact (site → GitHub commits → ContactOut / SignalHire via Claude in Chrome), best-fit project from the user's own GitHub, an "unrejectable" personalised pitch, and a tailored one-page resume — then sends from the user's college Gmail through Claude in Chrome with bounce kill switch, SEND-LOG logging, reply triage and in-thread follow-ups. Use whenever the user asks to cold mail / email startups or founders, "mine hiredoor / YC / wellfound and send", "do another round", "only YC", "send the held ones", "send follow-ups / FU1 / FU2", "check bounces or replies", "continue mailing", or sets up outreach for a new person, even if they never say "skill" or "pipeline".
 ---
 
 # Cold outreach pipeline
 
-A round goes: **intake → round spec → research → review → send → verify → log → replies → follow-ups.**
-Each step has a reference file. Read the reference when you reach that step, not before.
-
-The goal is interviews, not volume. Over many rounds the replies came from emails that had all three of these:
-1. A real, live role with pay that meets the bar.
+The goal is interviews, not volume. Every email that got a reply in past rounds had all of these:
+1. A real, live role at a real company, with pay that meets the bar.
 2. An address that actually delivers.
-3. One line only someone who looked at the company could write.
+3. A pitch only someone who looked at the company could write, backed by the user's most relevant project.
 
-Most rules below protect one of those three, or protect the user's sending account.
+Everything below protects one of those, or protects the user's sending account.
+This skill is generic: every personal fact comes from the user's `profile.toml` and their own GitHub. Nothing about a specific person is built in.
+
+## The pipeline at a glance
+
+```
+ intake ─► round brief ─► research (per company, cheapest gate first) ─► reveals ─► review ─► send ─► verify ─► log ─► replies ─► follow-ups
+                               │
+                               ├─ G1 Live role        0-1 yr, posted ≤ 60 days, or founder asking for engineers
+                               ├─ G2 Company valid    scam checks + funding class (YC / VC / angel / bootstrapped)   references/validation.md
+                               ├─ G3 Pay bar          evidence URL ≥ profile bar; UNKNOWN only for YC/VC             references/targeting.md
+                               ├─ G4 Contact          site/JD → GitHub org/members/commits → NEED-REVEAL            references/contacts.md
+                               ├─ G5 Best-fit project user's GitHub ranked against their stack → FIT line           scripts/github_projects.py
+                               ├─ G6 Unrejectable pitch  8/8 test                                                    references/pitch.md
+                               └─ G7 Tailored resume  1 page, leads with the FIT project                            references/tailored-resume.md
+```
+
+A company that fails any gate gets one TSV line with the reason and no folder. Gates run in this order because each one is cheaper than the next: don't hunt contacts for a company that turns out to be a scam.
+
+Read each reference file when you reach its step, not before.
 
 ## Where things live
 
 ```
-<workspace>/                    # from profile.toml [workspace].path, default ~/Documents/cold-email
+<workspace>/                    # profile.toml [workspace].path, default ~/Documents/cold-email
   profile.toml                  # the user's facts and preferences (never committed to the skill repo)
-  SEND-LOG.csv                  # one row per email sent; the source of truth for dedupe and follow-ups
+  SEND-LOG.csv                  # one row per email sent; source of truth for dedupe and follow-ups
   EXCLUDE.txt                   # one company slug per line; already contacted or ruled out
+  .cache/                       # yc.json (YC directory mirror), github_projects.json (user's repos)
   rounds/<YYYY-MM-DD>-<name>/
     SPEC.md                     # the brief the research agents work from
-    _research_<agent>.tsv       # one line per company checked, PASS or FAIL + reason
+    _research_<agent>.tsv       # one line per company checked: PASS / FAIL <reason> / APPLY-LINK / NEED-REVEAL
+    _reveals.md                 # every ContactOut / SignalHire attempt and credits left
+    links.json                  # tailored resume uploads (Drive id, md5, url, public_verified)
     <slug>/email.txt            # one folder per PASS company
+    <slug>/<Name>_Resume_<Company>.html / .pdf
     <slug>/compose_url.txt
   followups/<YYYY-MM-DD>/queue.json, results.jsonl
 ```
 
-Scripts are in `scripts/` next to this file. They use only the Python standard library and read `profile.toml`.
-Pass `--workspace` or set `OUTREACH_WS` if the workspace isn't the default.
+Scripts are in `scripts/`, stdlib Python plus `gh`, `curl`, `whois`, `dig` and Chrome. Pass `--workspace` or set `OUTREACH_WS` if the workspace isn't the default.
+
+| Script | Gate / step | What it does |
+|---|---|---|
+| `check_company.py <domains>` | G2 | site status, domain age, registry holds, MX, YC batch/status/team |
+| `ats_scan.py <slugs>` | G1 | live roles on Lever / Greenhouse / Ashby |
+| `dedupe.py --email --company` | G4 | checks SEND-LOG, EXCLUDE, live threads |
+| `github_projects.py --match "<kw>"` | G5 | ranks the user's own repos against the company's stack |
+| `lint_email.py <round>` | G6 | format, words, banned phrases, COMPANY/FIT/PAY rules, reveal opt-in, college sender, resume link |
+| `render_resume.sh <html>` | G7 | HTML → PDF, fails if not exactly 1 page |
+| `upload_resume.py <round>` | G7 | Drive upload, logged-out byte check, fills `{RESUME_LINK}` |
+| `mkurl.py`, `mkjs.py send` | send | Gmail compose links and the guarded send JS |
+| `log_sent.py`, `mark_outcome.py`, `stats.py` | log | SEND-LOG rows, bounces, kill-switch numbers |
+| `build_fu_queue.py`, `mkfu.py` | follow-ups | FU1/FU2 queue and in-thread runner |
+| `check_links.py` | intake | every resume link opens logged-out |
 
 ## Step 0: Intake (first run, or when profile.toml is missing or stale)
 
-Read `references/intake.md`. It lists every input, why each matters and how to check it.
-Copy `assets/profile.example.toml` to `<workspace>/profile.toml` and fill it from the user's answers and from what is already in the conversation or memory.
-Ask only for what you can't find. A single message with the missing items works better than a long interview.
+Read `references/intake.md`. Copy `assets/profile.example.toml` to `<workspace>/profile.toml` and fill it from what the user has said, memory and their files. Ask only for what's missing, in one message.
 
-Check these before any research:
-- Each resume link opens for a logged-out visitor: `python3 scripts/check_links.py`.
-- The GitHub profile exists.
-- Claude in Chrome is connected to the user's own browser, and the sending Gmail account is signed in there.
+Before any research, check:
+- `python3 scripts/check_links.py` passes (every resume link opens logged-out; `source_html` exists).
+- The GitHub profile exists, and `python3 scripts/github_projects.py --refresh` lists their repos.
+- `sending.gmail_address` is the user's **college (B.Tech) address** and `college_email_domain` is set. `lint_email.py` and `mkurl.py` refuse to run otherwise.
+- Claude in Chrome is connected to the user's own browser (`list_connected_browsers`) and that college Gmail is signed in there.
 
-Every proof point in the profile must come from the user or a document they gave you. Never invent achievements, numbers or "I have also applied" lines. A fabricated claim that a founder checks ends the conversation.
+Every proof point must come from the user or a document they gave you. Never invent achievements, numbers or "I have also applied" lines.
+
+## Step 1: Round brief (ask, then write SPEC.md)
+
+Unless the user's message already settles them, ask these in **one** AskUserQuestion call, with the profile defaults as the first option:
+
+1. **Funding filter**: only YC / YC + VC-funded / any validated startup incl. bootstrapped (`targets.funding_filter`).
+2. **Pay bar**: profile bar / loosen it / stricter. Quote the profile's numbers in the option text.
+3. **Contact fallback**: free routes only / also ContactOut and SignalHire via Chrome for founders and CTOs (`tools.paid_contact_tools`, budget `reveal_budget_per_round`).
+4. **Sources and size**: e.g. YC WaaS + ATS, hiredoor + Wellfound, funding news; and how many PASS to aim for.
+
+Then:
+1. Create `rounds/<date>-<name>/`.
+2. Write `SPEC.md` from `references/research-spec-template.md`, quoting the user's words for any override, so later rounds can see why the bar moved.
+3. If the last round's yield was tiny, say so and suggest which bar to loosen (`references/targeting.md` has the history).
+
+## Step 2: Research (G1 to G6, plus the resume HTML)
+
+Use at most `tools.max_agents` agents (default 2), split by source. The agent prompt is at the bottom of `references/research-spec-template.md`; it walks each company through the gates in order.
+
+Agents research and write files only. They never open Gmail and never use the reveal tools. Each one writes a PASS folder and its TSV line the moment a company passes, so work survives a crash or a rate limit, and stops at the cap in the spec.
+
+## Step 3: Reveals (main session only, only if opted in)
+
+Collect the `NEED-REVEAL` lines from all TSVs, rank them (founder/CTO at 5 to 50 people first, never TA/HR), and work through them in Chrome with ContactOut then SignalHire, following `references/contacts.md` → "Fallback: reveal tools". Log every attempt in `_reveals.md`. For each address found, finish that company's pitch (G5, G6) and folder.
+
+## Step 4: Review
+
+For each PASS folder:
+1. `python3 scripts/lint_email.py <round_dir>` must exit 0 (it re-checks COMPANY, PAY, FIT, reveal opt-in, the college sender and the resume link).
+2. Check every hook sentence against its source. Agents overstate ("your PR" when it was an issue).
+3. Score each email on the **unrejectable test** in `references/pitch.md`. Below 8/8 → rewrite.
+4. Build the tailored resume (G7, `references/tailored-resume.md`) for founder/eng emails, then `python3 scripts/upload_resume.py <round_dir>` once the user approves the drafts.
+5. `python3 scripts/mkurl.py <round_dir>`.
+
+Show the user one table: company · funding · verdict · recipient + status · role · pay evidence · FIT project · score · held reason. Below it, the APPLY-LINK companies (no contact; apply on the portal) and the resume diffs (one line each).
+
+## Step 5: Send
+
+Follow `references/sending-chrome.md` exactly: account check (the tab title must show the college address), compose deeplink, guarded send JS, toast check, discard the refilled compose. `python3 scripts/mkjs.py send <email>` prints the send JS. Send in groups of about 4 per browser call. Never re-send after a timeout until you've checked Sent for that recipient.
+
+## Step 6: Verify and log
+
+- 10 to 30 minutes after a batch, match mailer-daemon messages to recipients (`sending-chrome.md`, "Bounce check"), then `python3 scripts/stats.py` for the day's bounce rate against the kill switch.
+- `python3 scripts/log_sent.py <round_dir> <slug> ...` right after each confirmed send (SEND-LOG + EXCLUDE). `python3 scripts/mark_outcome.py <email> "BOUNCED <date> (...)"` for bounces.
+- Save a one-line state note to memory, or tell the user, so the next session can resume.
+
+## Step 7: Replies and follow-ups
+
+Triage replies by type (`references/followups.md`): details asked → answer from the profile in-thread; call → the user books it; unpaid or below bar → ask the user; not hiring / out of office → log it.
+
+FU1 about `followup.fu1_after_days` after the first email, FU2 about `fu2_after_days` after, both **in the same thread**, to named people who haven't replied:
+`build_fu_queue.py --stage fu1 --due <date>` → `mkfu.py dry <queue> 1 2` → `mkfu.py send <queue> A B`.
 
 ## Hard rules
 
-These come from real failures. Each has its reason, so you can judge the edge cases.
+Each comes from a real failure; the reason is there so you can judge edge cases.
 
-- **Contacts must be published or verified.** That means published on the company site, in a job description, on a team page, as a GitHub org email, or a commit-verified address (see `references/contacts.md`).
-  - No SMTP/RCPT probing.
-  - No guessing first.last@ patterns.
-  - No addresses an LLM produced.
-
-  Why: guessed and stale addresses bounce. Above roughly 3% bounces, Gmail starts throttling the account the user needs for everything else. One LLM run invented 39 of 40 "careers@" addresses.
-- **Kill switch.** Stop new cold sends for the day if:
-  - the day's bounce rate goes over `sending.bounce_stop_pct`, or
-  - Gmail shows any "unusual activity", limit, or warning banner, or
-  - spam complaints appear.
-
-  Tell the user. Resume the next day at lower volume with the safest contact types only.
-- **Daily cap.** Send at most `sending.daily_cap` new cold emails a day (default 40). Follow-ups in existing threads are separate, but they also go in batches.
-- **The user decides to send.** Draft and queue freely. Send once the user has said go for this batch, either in this request or by replying to your summary.
-
-  If a permission prompt or the auto-mode safety classifier denies a send, stop. Tell the user what's queued and ask them to approve it or exit auto mode. Never route around a denial.
-- **The user's own browser and accounts only.**
-  - Never type passwords or OTPs, and never create accounts. The user signs in.
-  - Check `list_connected_browsers` each session. The extension has reconnected to someone else's machine before.
-- **Startups only.** No big tech, MNC campus inboxes, quant/HFT, IT services or agencies, staffing firms, or pay-to-intern outfits, unless the user names one. Those companies don't read cold mail. Reach them through referrals and portals.
-- **Respect the lists.** Skip every company in `targets.never_contact` and `targets.live_threads`, and every company with a reply in progress. Never reuse an address already in SEND-LOG.
-- **The user's own words where asked.** If a form or job description asks for an essay, a "hardest bug", or anything "in your own words", leave a placeholder and hand that part to the user.
-
-## Step 1: Start a round
-
-1. Create `rounds/<date>-<name>/`.
-2. Write `SPEC.md` from `references/research-spec-template.md`. Fill it from `profile.toml` and apply the user's overrides for this round, such as "loosen it", "remote is fine" or "only YC". Write the overrides into the spec with the user's words quoted, so later rounds can see why the bar moved.
-
-If the last round's yield was tiny, say so and suggest which part of the bar to loosen. `references/targeting.md` has the yield history and the sources that still have stock.
-
-## Step 2: Research
-
-Use at most `tools.max_agents` agents (default 2), split by source. For example, one on hiredoor and Wellfound, one on YC WaaS, ATS boards and company sites. The prompt template is in `references/research-spec-template.md`.
-
-Agents only research and write files. They never open Gmail. Each one writes a PASS folder and its TSV line as soon as a company passes, so work survives a rate limit or crash. Agents also stop at the cap in the spec.
-
-## Step 3: Review the drafts
-
-For each PASS folder:
-
-1. Run `python3 scripts/lint_email.py <round_dir>`. It checks:
-   - the format, word count, banned phrases, em dashes and placeholders;
-   - that a resume link and the signature are present;
-   - that the address is not already in SEND-LOG.
-2. Read every hook sentence and check it against its source. Agents sometimes overstate, for example "your PR" when it was an issue.
-3. Match the format to the recipient (see `references/pitch.md`):
-   - HR, TA and careers@ inboxes get the no-jargon achievements version.
-   - Founders, CTOs and engineers can get one technical detail.
-4. Run `python3 scripts/mkurl.py <round_dir>` to write each `compose_url.txt`.
-
-Then show the user a short table: company, recipient and status, role, pay evidence, and anything held with the reason.
-Also list the APPLY-LINK companies, where there is no contact and the user should apply on the portal.
-
-## Step 4: Send
-
-Follow `references/sending-chrome.md` exactly: account check, compose deeplink, guarded send JS, toast check, then discard the refilled compose.
-`python3 scripts/mkjs.py send <email>` prints the send JS for one recipient.
-Send in groups of about 4 per browser call. Never re-send after a timeout or missing toast until you have checked the Sent folder for that recipient.
-
-## Step 5: Verify and check bounces
-
-About 10 to 30 minutes after a batch, search the mailer-daemon messages and match each bounce to a recipient (`references/sending-chrome.md`, "Bounce check").
-Run `python3 scripts/stats.py` to get the day's sent count and bounce rate against the kill switch.
-
-## Step 6: Log
-
-1. Run `python3 scripts/log_sent.py <round_dir> <slug> ...` right after each confirmed send. It appends to SEND-LOG with the follow-up due dates and adds the slug to EXCLUDE.
-2. Run `python3 scripts/mark_outcome.py <email> "BOUNCED <date> (address not found)"` for bounces.
-
-Save a one-line state note to memory, or tell the user, so the next session can resume.
-
-## Step 7: Replies
-
-Triage new replies by type (`references/followups.md`, "Reply triage"):
-- **Asks for a resume, CGPA or details:** answer from the profile, in-thread.
-- **Wants a call:** the user books it. Give them the link and the times.
-- **Unpaid or below the bar:** ask the user.
-- **Not hiring:** log the outcome.
-- **Out of office:** note the return date and any other contact they gave.
-
-Update the reply column in SEND-LOG.
-
-## Step 8: Follow-ups
-
-Send FU1 about `followup.fu1_after_days` days after the first email, and FU2 about `followup.fu2_after_days` days after.
-Both go **in the same thread**, to named people who haven't replied.
-
-1. `python3 scripts/build_fu_queue.py --stage fu1 --due <date>` builds the queue. It skips bounces, replies and generic inboxes.
-2. `python3 scripts/mkfu.py dry|send <queue> A B` prints the in-page runner for items A to B. It re-checks each thread live before sending.
-3. Always dry-run 2 items first.
-
-The details are in `references/followups.md`.
+- **College address only.** Cold mail goes from the user's college (B.Tech) Gmail. It gets opened far more than a personal address, and it keeps the user's personal account out of spam risk. The scripts enforce it.
+- **Validate before you invest.** No contact hunting, pitch or resume work on a company that hasn't passed G2. A RED signal is a FAIL with no exceptions. Never pass on a company that asks the candidate for money, or for ID or bank details before an offer.
+- **Contacts must be published, verified or revealed by an opted-in tool.**
+  - No SMTP/RCPT probing, no guessing first.last@ patterns, no addresses an LLM produced (one run invented 39 of 40).
+  - ContactOut / SignalHire only after the free ladder failed, only if listed in `tools.paid_contact_tools`, only in the user's signed-in browser, only in the main session.
+- **Kill switch.** Stop new cold sends for the day if the bounce rate passes `sending.bounce_stop_pct`, Gmail shows any unusual-activity / limit banner, or spam complaints appear. Tell the user; resume the next day at lower volume with the safest contact types.
+- **Daily cap.** At most `sending.daily_cap` new cold emails a day (default 40). Follow-ups are separate but also batched.
+- **The user decides to send.** Draft and queue freely; send only after the user has said go for this batch. If a permission prompt or the auto-mode classifier denies a send, stop, say what's queued, and ask. Never route around a denial.
+- **The user's own browser and accounts only.** Never type passwords or OTPs, never create accounts. Check `list_connected_browsers` every session.
+- **Startups only.** No big tech, MNC campus inboxes, quant/HFT, IT services or agencies, staffing firms or pay-to-intern outfits unless the user names one. Those go through referrals and portals.
+- **Respect the lists.** Skip `targets.never_contact`, `targets.live_threads` and any company with a reply in progress. Never reuse an address in SEND-LOG.
+- **Truth in the resume and pitch.** Tailoring reorders and rewords true facts; it never adds a skill, metric or role. GitHub projects appear only as the repo itself shows them.
+- **The user's own words where asked.** If a form or JD asks for an essay or anything "in your own words", leave a placeholder and hand it to the user.
 
 ## Report format
 
-End each work session with a short report:
-- sent today (new and follow-ups), delivered, bounced and the bounce %;
-- replies, and what each needs;
-- what's waiting on the user (calls to book, essays, apply-links, decisions);
+End each work session with:
+- sent today (new and follow-ups), delivered, bounced and bounce %;
+- passes by funding class, and how many companies failed validation (with the top reasons);
+- reveal credits used and left;
+- replies and what each needs;
+- what's waiting on the user (calls, essays, apply-links, approvals);
 - the next due dates.
 
-Keep it short, and put names and numbers first.
+Names and numbers first. Keep it short.

@@ -17,10 +17,14 @@ Why: the first line of every email ("I'm X, a final-year ... at Y") and the sign
 - Check each link with `python3 scripts/check_links.py`: it must return 200 to a logged-out request and must not be a Google sign-in page.
 - If they only have a PDF, they upload it to Drive, set it to "Anyone with the link", and paste the link. You can't sign into their Drive for them.
 
+- The **master resume as HTML** (`resumes.source_html`). Tailored per-company resumes are built from it (`tailored-resume.md`). If they only have a PDF/DOCX, build the HTML once and get their yes on it.
+- For tailored-resume uploads: the user runs `! gcloud auth login --enable-gdrive-access` once.
+
 Why: a link that asks for access kills the email. Gmail also shows a "recipient may not have access" dialog that blocks automated sends.
 
 ## 3. GitHub, LinkedIn, portfolio (GitHub strongly recommended)
 Check that the GitHub profile is public. If it's sparse, say so. Founders do click it.
+Run `python3 scripts/github_projects.py --refresh` once: it caches their repos so every pitch can pick the project that best matches each company. Point out repos with no README or description; those can't be matched.
 
 ## 4. Proof points (required, and the most important input)
 Two lists, both made only of facts the user confirms:
@@ -38,7 +42,7 @@ Never add a fact the user didn't give you.
 - Role types and experience band.
   - Default: SDE/backend/infra/AI, 0 to 1 year, intern or new grad.
 - Locations and whether remote is OK.
-- Company bar, for example YC or VC-funded only, or any genuine product startup.
+- Funding filter (`targets.funding_filter`): YC only, YC + VC, or any validated startup including bootstrapped. See `validation.md`.
 - Never-contact list and companies already in conversation (`live_threads`).
 
 ## 6. Pay bar (required)
@@ -47,11 +51,11 @@ Never add a fact the user didn't give you.
 - Tell them the trade-off from past rounds: a strict bar (₹40k stipend and ₹12 LPA, YC/VC only) found 2 passing companies out of 40 checked. A loosened bar (₹25k or ₹8 LPA, any product startup, remote OK) found 25 or more per agent.
 
 ## 7. Sending setup (required, user does the clicking)
-- Which Gmail account sends. A college address (.ac.in / .edu) tends to get opened more often.
+- **The college (B.Tech) Gmail is required** as the sender: `sending.gmail_address` plus `sending.college_email_domain` (e.g. `nitt.edu`, `iitb.ac.in`). The scripts refuse a non-college sender. If their college mail isn't on Google Workspace, set `require_college_email = false` only with their explicit say-so, and note why.
 - The Claude in Chrome extension is installed and connected to **their** browser. Check with `list_connected_browsers`.
 - The sending account is signed into Gmail in that browser. Record its index N in `mail.google.com/mail/u/N` and check the tab title shows the right address.
 - Optional: they log into YC Work at a Startup, Wellfound or LinkedIn themselves if they want those sources mined.
-- Paid contact tools (ContactOut, SignalHire, Kaspr) are off unless they opt in. Explain that the TA/HR addresses these tools return bounced often.
+- Reveal tools: ask whether to use **ContactOut** and/or **SignalHire** as the last contact fallback (`tools.paid_contact_tools`). They must be signed in to each in that same browser. Explain: free plans have small monthly caps, some profiles are locked, and revealed addresses bounce more than published ones, so they're used only for founders/CTOs after the free routes fail.
 
 ## 8. Volume and cadence (defaults offered)
 - Daily cap: 40 new emails a day is the safe default. Above that, account risk rises and reply quality falls.
@@ -65,6 +69,8 @@ Never add a fact the user didn't give you.
 
 ## Readiness checklist (all must be true before the first send)
 - [ ] profile.toml filled; `python3 scripts/check_links.py` passes
+- [ ] `sending.gmail_address` is the college address and `college_email_domain` matches it
+- [ ] `github_projects.py --refresh` lists their repos
 - [ ] SEND-LOG.csv exists (header from `assets/SEND-LOG.header.csv`) and EXCLUDE.txt exists, holding any companies already contacted
 - [ ] Chrome connected to the user's own browser; the Gmail tab title shows `sending.gmail_address`
 - [ ] the user has said which round to run and given the go to send (or will review the table first)

@@ -22,6 +22,8 @@ portfolio = ""
 # One public link per resume variant (Drive "anyone with the link", checked logged-out).
 # The research spec tells agents which variant fits which role.
 [resumes]
+# Master resume as HTML: tailored per-company resumes are built from it (references/tailored-resume.md).
+source_html = "~/Documents/cold-email/resume/master.html"
 default = "https://drive.google.com/file/d/XXXX/view"
 backend = ""
 devops = ""
@@ -30,7 +32,9 @@ fintech = ""
 data = ""
 
 [sending]
-gmail_address = "you@college.ac.in"      # a college address tends to get read more than a personal one
+gmail_address = "you@college.ac.in"      # must be the college (B.Tech) address: it gets opened far more than a personal one
+college_email_domain = "college.ac.in"   # lint_email.py and mkurl.py refuse to run if gmail_address isn't at this domain
+require_college_email = true
 gmail_account_index = 0                  # the N in mail.google.com/mail/u/N; re-check every session
 daily_cap = 40                           # new cold emails per day
 bounce_stop_pct = 3                      # stop new sends for the day above this
@@ -42,6 +46,9 @@ best_window = "Tue-Thu 08:15-10:00"
 role_types = ["SDE intern", "backend", "full-stack", "infra / DevOps / SRE / platform", "AI/ML engineer", "data engineer", "new grad SDE-1"]
 experience = "0-1 yr: intern, new grad, fresher, 2026/2027 batch. 2+ yrs required = FAIL"
 locations = ["India", "India-remote", "global remote hiring from India"]
+# Which funding classes may pass validation (references/validation.md): yc, vc, angel, bootstrapped, govt/grant.
+# "Only YC" -> ["yc"]. UNVERIFIED never passes unless the user overrides it for a round.
+funding_filter = ["yc", "vc", "angel", "bootstrapped"]
 company_bar = "Genuine product startup: YC, or VC-funded at any stage, or a bootstrapped product company with a real team. Under ~1,000 staff."
 exclude_company_types = ["big tech", "MNC", "quant/HFT", "IT services / outsourcing / agencies", "staffing / recruitment", "training + placement / pay-to-intern", "crypto tokens / gambling / betting", "unpaid"]
 never_contact = []                       # slugs the user said never to email
@@ -88,8 +95,10 @@ signoff = "Thanks,"
 [tools]
 claude_in_chrome = true
 max_agents = 2
-# Paid reveal tools are OFF by default; their TA/HR hits bounced often. Add e.g. "contactout" only if the user opts in.
+# Reveal tools, used through Claude in Chrome in the user's own signed-in browser, ONLY after the free ladder
+# (site, JD, packages, GitHub org/members/commits) found nothing. Empty = never used. Options: "contactout", "signalhire".
 paid_contact_tools = []
+reveal_budget_per_round = 10             # stop revealing after this many attempts in a round
 sources = ["hiredoor", "yc-waas", "wellfound", "instahyre", "cutshort", "ats-api", "company-sites", "github-orgs"]
 yc_waas_logged_in = false                # the user must log in themselves
 

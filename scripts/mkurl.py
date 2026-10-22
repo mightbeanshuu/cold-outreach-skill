@@ -2,7 +2,7 @@
 """Write compose_url.txt next to each email.txt.
 usage: mkurl.py <round_dir | email.txt> [--account N] [--workspace WS]"""
 import sys, urllib.parse
-from common import ws_arg, load_profile, parse_email, email_files
+from common import ws_arg, load_profile, parse_email, email_files, college_mail_problem
 
 ws, argv = ws_arg(sys.argv[1:])
 acct = None
@@ -11,6 +11,8 @@ if "--account" in argv:
 if not argv:
     sys.exit(__doc__)
 prof = load_profile(ws)
+if college_mail_problem(prof):
+    sys.exit("refusing to build compose links: " + college_mail_problem(prof))
 acct = acct if acct is not None else prof["sending"]["gmail_account_index"]
 q = urllib.parse.quote
 for f in email_files(argv[0]):

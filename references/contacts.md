@@ -18,7 +18,15 @@ Not allowed:
 - SMTP/RCPT probing.
 - Guessing an address from the company's pattern. About half of the TA pattern guesses bounced.
 - Addresses an LLM or chatbot listed. In one run, 39 of 40 were invented.
-- Data-broker reveals, unless the user opted in under `tools.paid_contact_tools`. If they did, mark them `STATUS: PAID-REVEAL` and treat them as the riskiest tier, because their TA/HR hits bounced repeatedly.
+- Reveal tools (ContactOut, SignalHire) **before** the free ladder is exhausted, or when the user hasn't listed them in `tools.paid_contact_tools`. When they are used, follow "Fallback: reveal tools" below.
+
+## The order to try, per company
+1. **Web:** the job post, the live site (home, /careers, /about, /contact, /team), and the company's own packages.
+2. **GitHub:** org email, then public members, then commit authors at the company domain (verify with the commit search).
+3. **Reveal tools in Chrome:** ContactOut first, then SignalHire. Only for a named founder, CTO or engineering lead, and only when steps 1 and 2 found nothing usable.
+4. **Nothing found:** write `APPLY-LINK <url>` in the TSV, so the user can apply on the portal or message on LinkedIn.
+
+Research agents do steps 1 and 2 only. When those fail for a company that otherwise passed, the agent writes a `NEED-REVEAL` line (below) instead of a folder. The main session does step 3 in one batch, because there is one browser and the credits are shared.
 
 ## How to look
 
@@ -52,3 +60,33 @@ Contact **one person per company per round**. A second person is fine in a later
 - Mark it in SEND-LOG with `scripts/mark_outcome.py` and add the slug to EXCLUDE.
 - Look for a *published* alternative before trying again. An out-of-office or bounce message sometimes names the right person.
 - Add the lesson to the round's TSV, for example "JD personal email, 4 months old, bounced", so the next spec can tighten the rule.
+
+## Fallback: reveal tools (ContactOut, SignalHire) through Claude in Chrome
+Use them only if they are listed in `tools.paid_contact_tools`, and only through the user's own browser, where the user has already signed in to each tool. Never type passwords or create accounts.
+
+**Input.** The research agents' `NEED-REVEAL` lines from `_research_<agent>.tsv`:
+```
+slug<TAB>company<TAB>NEED-REVEAL<TAB><person name><TAB><title><TAB><linkedin url><TAB><domain>
+```
+Rank them before spending anything: founder or CTO at a 5-to-50-person company first, then an engineering lead, never TA or HR (those reveals bounced the most). Stop at `tools.reveal_budget_per_round`.
+
+**ContactOut**
+- Use the dashboard, not the extension side panel. The panel lives in an extension iframe and ignores automated clicks.
+- Open `https://contactout.com/dashboard/search?company=<Company>&nm=<Name>&title=<Title>`; the URL params work.
+- "This profile is restricted on the free plan" is per profile and permanent. Waiting or clicking again never works. **Stop after one no-op click** and move to SignalHire for that person.
+- A click that does nothing at all usually means a restricted profile that hasn't shown its banner yet. Don't diagnose it as a broken click.
+- "No contact details available" means the record really is empty.
+- Limits seen: a monthly email-reveal cap (resets on the 1st), a daily phone cap, and HTTP 429 after a burst. On 429, stop for the session.
+
+**SignalHire**
+- On the person's LinkedIn profile, open the SH tab on the right edge, then "Reveal contacts". These clicks work.
+- Or, in the SignalHire web app, fill the Profile-name field and the Company-name field and press Enter. Its AI search box is unreliable.
+- About 10 reveal credits per period, plus a separate daily search limit. Note the count left after each reveal.
+
+**What to record**
+- Prefer a work address at the company domain. A personal Gmail is OK when the tool shows it as verified and the person is a founder or engineer.
+- Before using a revealed work address, check it isn't contradicted: `gh api -X GET search/commits -f q="author-email:<addr>"` showing a different shape for that person (`harish.reddy@` vs `harish@`) means take the commit-verified one.
+- TO line: `TO: <addr>   (STATUS: REVEAL-CONTACTOUT, <linkedin url>, <date>)` or `REVEAL-SIGNALHIRE`.
+- Write every reveal, including restricted and empty ones, to `<round_dir>/_reveals.md` straight away (name, tool, result, credits left), so nothing is paid for twice.
+
+**Risk.** A reveal doesn't prove the mailbox is alive. In Oct 2026, one ContactOut work address bounced in the same batch as three stale commit addresses. Count reveals as the riskiest tier: send them in the same batch as published addresses, never as a whole batch on their own, and watch the bounce rate.

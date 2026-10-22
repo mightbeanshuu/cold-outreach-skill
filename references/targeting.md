@@ -2,15 +2,16 @@
 
 ## The bar (all four must hold; the values come from profile.toml)
 1. **Company:** a genuine product startup that passes `targets.company_bar`, and not in `targets.exclude_company_types`.
-   - For funding, look for YC on ycombinator.com/companies, or a VC round on Tracxn, Crunchbase, Inc42 or YourStory.
-   - For staff count, use LinkedIn or the team page.
+   - It must pass validation (`validation.md`): a funding class in `targets.funding_filter` with evidence, and no scam signals.
+   - For staff count, use LinkedIn, the team page, or the YC team size from `scripts/check_company.py`.
 2. **Hiring now:** a live role matching `targets.role_types` and `targets.experience`, posted in the last ~60 days, or a founder post asking for engineers. Record the URL and the posted date. A role that requires 2+ years is a FAIL, even if the company is great.
 3. **Pay evidence:**
    - Pass at a stipend of at least `pay.intern_stipend_min`, or a full-time / PPO offer of at least `pay.fulltime_min_lpa`, or the USD equivalent for remote roles.
    - Evidence sources: the job description, YC WaaS or Wellfound salary bands, Instahyre or Cutshort bands, Glassdoor or AmbitionBox intern stipends, LeetCode or Reddit comp posts.
    - With no evidence, write `PAY: UNKNOWN` and allow it only if `pay.unknown_pay_ok_if_funded` and the company is YC- or named-VC-backed. Otherwise it's a FAIL.
 4. **Contact:** an address on the ladder in `contacts.md`.
-   - If there's none, write the company to the TSV as `APPLY-LINK <url>` with no folder, so the user can apply on the portal.
+   - If the free ladder finds nothing but a founder/CTO is known, write `NEED-REVEAL` (the main session tries ContactOut/SignalHire if opted in).
+   - Otherwise write `APPLY-LINK <url>` with no folder, so the user can apply on the portal.
 
 ## Sources, and what each is good for
 

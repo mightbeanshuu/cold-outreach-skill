@@ -94,3 +94,18 @@ def is_generic(addr):
 def first_name(body):
     m = re.match(r"\s*(?:Hi|Hello|Dear|Hey)\s+([^,\n]+),", body)
     return m.group(1).strip() if m else ""
+
+
+def college_mail_problem(prof):
+    """Return why sending is not allowed from the configured address, or '' if it's fine.
+    Cold mail goes out from the user's college (B.Tech) address: it gets opened far more than a personal one."""
+    snd = prof.get("sending", {})
+    addr = (snd.get("gmail_address") or "").lower()
+    dom = (snd.get("college_email_domain") or "").lower().lstrip("@")
+    if not snd.get("require_college_email", True):
+        return ""
+    if not dom:
+        return "sending.college_email_domain is empty in profile.toml (set it, e.g. 'nitt.edu')"
+    if not addr.endswith("@" + dom) and not addr.endswith("." + dom):
+        return f"sending.gmail_address {addr or '(empty)'} is not a college address @{dom}"
+    return ""

@@ -6,7 +6,11 @@ from common import ws_arg, load_profile
 
 ws, _ = ws_arg(sys.argv[1:])
 prof = load_profile(ws)
-links = {f"resume:{k}": v for k, v in prof.get("resumes", {}).items() if v}
+links = {f"resume:{k}": v for k, v in prof.get("resumes", {}).items() if str(v).startswith("http")}
+src = prof.get("resumes", {}).get("source_html", "")
+if src:
+    from pathlib import Path
+    print(("ok  " if Path(src).expanduser().exists() else "FAIL"), "resume:source_html", src)
 for k in ("github", "linkedin", "portfolio"):
     v = prof.get("links", {}).get(k)
     if v and k != "linkedin":  # LinkedIn blocks anonymous fetches; check it by hand
