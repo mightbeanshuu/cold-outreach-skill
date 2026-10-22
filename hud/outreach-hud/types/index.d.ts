@@ -10,6 +10,8 @@ export type Round = {
   topFail: string
 }
 
+export type Setting = { label: string; value: string }
+
 export type Snapshot = {
   updatedAt: number
   tick: number
@@ -29,11 +31,16 @@ export type Snapshot = {
   allFu: number
   days: Day[]
   round: Round | null
+  settings: Setting[]
   error: string | null
 }
 
 declare module 'claude-code' {
   interface PluginState {
-    'outreach-hud': { snap: Snapshot | null }
+    'outreach-hud': {
+      snap: Snapshot | null
+      // the 7-day and settings cards show until this time (ms); 0 hides them
+      detailsUntil: number
+    }
   }
 }

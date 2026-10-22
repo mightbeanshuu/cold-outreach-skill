@@ -36,7 +36,7 @@ Then it sends from your **college Gmail** through Claude in Chrome, checks bounc
 
 `review.py` prints each round as a table plus every draft in a box. All questions are asked in the terminal.
 
-**Live side panel.** `hud/outreach-hud` is a Claude Code mod that keeps the same dashboard docked beside the chat, refreshing every 3 seconds. It opens when the skill loads, or with `/outreach`. Start Claude with `claude --plugin-dir ~/.claude/skills/cold-outreach/hud/outreach-hud`.
+**Live side panel.** `hud/outreach-hud` docks a neumorphic panel beside the chat. It always shows today's numbers, and adds the last 7 days and your settings when the skill loads or you type `/outreach`. It refreshes every 3 seconds. Start Claude with `claude --plugin-dir ~/.claude/skills/cold-outreach/hud/outreach-hud`.
 
 ## Install
 

@@ -38,15 +38,15 @@ replies = [r for r in rows if r["reply"].strip()]
 allb = [r for r in rows if bounced(r)]
 
 left_min, left_max = max(0, lo - len(day)), max(0, hi - len(day))
-state = (ui.c(f"{ui.BAD} KILL SWITCH: stop new sends today", "red") if killed else
-         ui.c(f"{ui.OK} daily max reached", "yellow") if left_max == 0 else
-         ui.c(f"{ui.OK} in range", "green") if len(day) >= lo else f"{left_min} more to reach the minimum")
+state = (ui.c(f"{ui.BAD} pause: over {s['bounce_stop_pct']}% bounced", "red") if killed else
+         ui.c(f"{ui.OK} done for today", "yellow") if left_max == 0 else
+         ui.c(f"{ui.OK} on target · {left_max} left", "green") if len(day) >= lo else f"{left_min} to go today")
 lines = [
     f"New emails  {ui.bar(len(day), hi, 26, lo)}  {len(day):>3} / {lo}-{hi}   {state}",
-    f"Bounces     {len(db)} of {len(day)} today  ({pct:.1f}%, stop above {s['bounce_stop_pct']}%)"
+    f"Bounces     {len(db)} of {len(day)} today  ({pct:.1f}%, limit {s['bounce_stop_pct']}%)"
     + (f"  {ui.c(ui.WARN, 'red')}" if killed else ""),
-    f"Follow-ups  sent today {len(fu_today)}  ·  due now: FU1 {len(fu1)}, FU2 {len(fu2)}",
-    f"Replies     {len(replies)} total  ({100 * len(replies) / max(1, len(rows)):.1f}% of sends)",
+    f"Follow-ups  {len(fu_today)} sent today  ·  {len(fu1) + len(fu2)} due",
+    f"Replies     {len(replies)}  ({100 * len(replies) / max(1, len(rows)):.1f}% of emails)",
     f"All time    {len(rows)} sent  ·  {len(allb)} bounced ({100 * len(allb) / max(1, len(rows)):.1f}%)  ·  "
     f"{sum(1 for r in fus if r['result'] == 'SENT')} follow-ups",
 ]
@@ -70,7 +70,7 @@ if db:
     for r in db:
         print(f"  {ui.BAD} {r['company']:<22} {r['email']}")
 if killed:
-    print(f"\n{ui.BAD} KILL SWITCH: {pct:.1f}% > {s['bounce_stop_pct']}%. Stop new cold sends today.")
+    print(f"\n{ui.BAD} Pause new emails today: {pct:.1f}% bounced (limit {s['bounce_stop_pct']}%).")
 if need is not None:
     if killed or len(day) + need > hi:
         print(f"\n{ui.BAD} Sending {need} more would make {len(day) + need} today (max {hi})" + (" and the kill switch is on" if killed else ""))

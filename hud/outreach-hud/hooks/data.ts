@@ -1,4 +1,4 @@
-import type { Day, Round, Snapshot } from '../types'
+import type { Day, Round, Setting, Snapshot } from '../types'
 
 // Pure parsing of the cold-outreach workspace files; the same numbers scripts/stats.py prints.
 
@@ -36,11 +36,94 @@ export function parseCsv(text: string): Record<string, string>[] {
   return body.map(r => Object.fromEntries(head.map((h, i) => [h.trim(), r[i] ?? ''])))
 }
 
-// Only the handful of keys the panel shows; a full TOML parser isn't needed for them.
+// A small TOML reader: [sections], key = "string" | number | bool | ["array", ...] (arrays may span lines).
+// Triple-quoted strings (follow-up templates) are skipped; the panel doesn't show them.
+export type Toml = Record<string, Record<string, string | number | boolean | string[]>>
+
+export function parseToml(text: string): Toml {
+  const out: Toml = { '': {} }
+  let sec = ''
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const line = (lines[i] ?? '').replace(/\s+#[^"]*$/, '').trim()
+    if (!line || line.startsWith('#')) continue
+    const head = line.match(/^\[([^\]]+)\]$/)
+    if (head) { sec = head[1] ?? ''; out[sec] ??= {}; continue }
+    const kv = line.match(/^([A-Za-z0-9_]+)\s*=\s*(.*)$/)
+    if (!kv) continue
+    const key = kv[1] ?? ''
+    let val = kv[2] ?? ''
+    if (val.startsWith('"""')) {
+      while (!val.slice(3).includes('"""') && i + 1 < lines.length) val += '\n' + (lines[++i] ?? '')
+      continue
+    }
+    if (val.startsWith('[')) {
+      while (!/\]\s*$/.test(val) && i + 1 < lines.length) val += ' ' + (lines[++i] ?? '').replace(/\s+#[^"]*$/, '').trim()
+      const items = [...val.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(m => (m[1] ?? '').replace(/\\"/g, '"'))
+      ;(out[sec] ??= {})[key] = items
+      continue
+    }
+    const str = val.match(/^"((?:[^"\\]|\\.)*)"/)
+    const v = str ? (str[1] ?? '') : val === 'true' ? true : val === 'false' ? false : Number.isNaN(Number(val)) ? val : Number(val)
+    ;(out[sec] ??= {})[key] = v
+  }
+  return out
+}
+
+function get(t: Toml, sec: string, key: string): string | number | boolean | string[] | undefined {
+  return t[sec]?.[key]
+}
+
 function tomlValue(text: string, key: string): string | undefined {
   const m = text.match(new RegExp(`^\\s*${key}\\s*=\\s*("([^"]*)"|[^#\\n]+)`, 'm'))
   if (!m) return undefined
   return (m[2] ?? m[1] ?? '').trim()
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function month(v: unknown): string {
+  const m = String(v ?? '').match(/^(\d{4})-(\d{2})/)
+  if (!m) return String(v ?? '?')
+  return `${MONTHS[Number(m[2]) - 1] ?? m[2]} ${m[1]}`
+}
+
+function money(n: unknown, currency: unknown): string {
+  const v = Number(n ?? 0)
+  if (String(currency ?? 'INR') === 'INR') return v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`
+  return `${v} ${currency}`
+}
+
+const FUNDING: Record<string, string> = {
+  yc: 'YC', vc: 'VC-funded', angel: 'angel-funded', bootstrapped: 'bootstrapped', 'govt/grant': 'grant-funded',
+}
+const TOOL: Record<string, string> = { contactout: 'ContactOut', signalhire: 'SignalHire' }
+
+// Plain-language summary of profile.toml, one line per setting.
+export function settings(text: string): Setting[] {
+  if (!text.trim()) return [{ label: 'Setup', value: 'not done yet: load the skill to set it up' }]
+  const t = parseToml(text)
+  const arr = (sec: string, key: string) => {
+    const v = get(t, sec, key)
+    return Array.isArray(v) ? v : []
+  }
+  const resumes = t.resumes ?? {}
+  const links = Object.values(resumes).filter(v => typeof v === 'string' && v.startsWith('http')).length
+  const tools = arr('tools', 'paid_contact_tools').map(x => TOOL[x] ?? x)
+  const intern = String(get(t, 'eligibility', 'intern_available_from') ?? 'now')
+  return [
+    { label: 'Graduating', value: `${get(t, 'identity', 'grad_year') ?? '?'} · ${get(t, 'identity', 'degree') ?? ''} · ${get(t, 'identity', 'college_short') ?? get(t, 'identity', 'college') ?? ''}` },
+    { label: 'Resume', value: `${links} saved link${links === 1 ? '' : 's'}${resumes.source_html ? ' · tailored per company' : ''}` },
+    { label: 'Experience', value: `${get(t, 'eligibility', 'exp_min_years') ?? 0}-${get(t, 'eligibility', 'exp_max_years') ?? 3} yrs · intern ${intern === 'now' ? 'now' : 'from ' + month(intern)} · full-time ${month(get(t, 'eligibility', 'fulltime_join_from'))}` },
+    { label: 'Roles', value: arr('targets', 'role_types').join(', ') },
+    { label: 'Where', value: arr('targets', 'locations').join(', ') },
+    { label: 'Companies', value: arr('targets', 'funding_filter').map(f => FUNDING[f] ?? f).join(', ') || 'any real startup' },
+    { label: 'Min pay', value: `${money(get(t, 'pay', 'intern_stipend_min'), get(t, 'pay', 'currency'))}/month intern · ${get(t, 'pay', 'fulltime_min_lpa') ?? '?'} LPA full-time` },
+    { label: 'Contacts', value: ['website', 'GitHub', ...tools].join(' → ') + (tools.length ? ` · ${get(t, 'tools', 'reveal_budget_per_round') ?? 10} lookups/round` : '') },
+    { label: 'Per day', value: `${get(t, 'sending', 'daily_min') ?? '?'}-${get(t, 'sending', 'daily_cap') ?? '?'} new emails · pause at ${get(t, 'sending', 'bounce_stop_pct') ?? 3}% bounces` },
+    { label: 'About you', value: `${arr('pitch', 'hr_bullets').length} achievements · ${arr('pitch', 'eng_facts').length} projects` },
+    { label: 'Skipping', value: `${arr('targets', 'never_contact').length} never contact · ${arr('targets', 'live_threads').length} already talking` },
+  ]
 }
 
 export function localDay(ms: number, offsetDays = 0): string {
@@ -118,6 +201,7 @@ export function snapshot(f: Files, now: number, tick: number): Snapshot {
     allFu: fus.filter(r => r.result === 'SENT').length,
     days,
     round: f.round ? parseRound(f.round.name, f.round.tsvs, f.round.drafts) : null,
+    settings: settings(f.profile),
     error: null,
   }
 }

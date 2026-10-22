@@ -1,22 +1,25 @@
 # outreach-hud
 
-A live side panel for the cold-outreach skill, drawn beside the Claude Code chat in Synapse's palette.
-It refreshes every 3 seconds from the workspace (`$OUTREACH_WS`, default `~/Documents/cold-email`) and shows:
+A live panel for the cold-outreach skill that sits beside the Claude Code chat. It uses soft, raised neumorphic cards and plain words.
 
-- today's new emails against your daily range, with the minimum marked on the bar;
-- bounces against the kill switch;
-- follow-ups sent today and FU1/FU2 due;
-- the last 7 days (new and follow-ups, bounces);
-- the newest round's pass / fail / reveal / apply counts and its top fail reason;
-- all-time sends, bounce rate, replies and follow-ups.
+**Always shown: Today**
+- New emails against your daily range, with the minimum marked on the bar
+- Bounces today and the limit
+- Follow-ups sent today and due
+- Replies
+- All-time totals
 
-It opens by itself when the cold-outreach skill loads, or with `/outreach`.
+**Also shown when the skill loads, or when you type `/outreach`** (for a minute; press *Progress & settings* to keep it open):
+- Last 7 days: new emails, follow-ups and bounces per day, plus this round's progress
+- Your settings: graduation, resume, experience, roles, where, companies, minimum pay, contacts, per day, about you, skipping
 
-Run Claude Code with it loaded:
+It reads `SEND-LOG.csv`, `FOLLOWUP-LOG.csv`, `profile.toml` and the newest `rounds/` folder every 3 seconds from `$OUTREACH_WS` (default `~/Documents/cold-email`). It only reads, never writes.
+
+Run Claude Code with it:
 
 ```sh
 claude --plugin-dir ~/.claude/skills/cold-outreach/hud/outreach-hud
 ```
 
-It docks beside the chat in the fullscreen terminal layout from 110 columns wide, and sits above the prompt on narrower windows.
-It only reads files. Test: `claude plugin test hud/outreach-hud`.
+It docks beside the chat in the fullscreen layout from 110 columns, and sits above the prompt on narrower windows.
+Test: `claude plugin test hud/outreach-hud`.

@@ -5,45 +5,34 @@ import type { Snapshot } from '../types'
 import { snapshot } from './data'
 import type { Files } from './data'
 
-// Live side panel for the cold-outreach skill, in Synapse's palette.
+// Live side panel for the cold-outreach skill.
+// Always: the Today card. On skill load and on /outreach: also the last 7 days and your settings.
+// Look: neumorphic cards (raised surface, lit top-left rim, shadowed bottom-right rim, muted colors).
 const PANE = 'outreach-hud'
 const TITLE = 'Outreach'
 const REFRESH_MS = 3000
+const DETAILS_MS = 60_000
+const FOREVER = 8.64e15
+
 const snap = atom({ plugin: 'outreach-hud', key: 'snap' } as const, null)
+const detailsUntil = atom({ plugin: 'outreach-hud', key: 'detailsUntil' } as const, 0)
 
-const GRADIENT = [
-  [0.0, 0x5c, 0x7c, 0xff],
-  [0.3, 0x00, 0xb8, 0xff],
-  [0.6, 0x00, 0xef, 0xd4],
-  [1.0, 0x00, 0xff, 0xaa],
-] as const
-const CYAN = '#00efd4'
-const BLUE = '#5c7cff'
-const SKY = '#00b8ff'
-const GREEN = '#00ff88'
-const AMBER = '#ffae00'
-const RED = '#ff5c7c'
+// Soft palette on a dark slate surface.
+const SURFACE = '#2b3040' // the raised card
+const RIM_LIGHT = '#3d4458' // top-left highlight
+const RIM_DARK = '#1a1d26' // bottom-right shadow
+const TRACK = '#20242f' // the pressed-in groove of a bar
+const INK = '#d7deef' // main text
+const MUTED = '#8590ad' // labels
+const ACCENT = '#7fdcd0' // soft teal
+const BLUE = '#8fa3ff'
+const GOOD = '#8ee0b0'
+const WARN = '#f0c674'
+const BAD = '#f29b9b'
 
-function lerp(t: number): string {
-  const x = Math.max(0, Math.min(1, t))
-  for (let i = 0; i < GRADIENT.length - 1; i++) {
-    const a = GRADIENT[i]
-    const b = GRADIENT[i + 1]
-    if (!a || !b) break
-    const [p0, r0, g0, b0] = a
-    const [p1, r1, g1, b1] = b
-    if (x >= p0 && x <= p1) {
-      const k = (x - p0) / (p1 - p0)
-      const c = (u: number, v: number) => Math.round(u + (v - u) * k).toString(16).padStart(2, '0')
-      return `#${c(r0, r1)}${c(g0, g1)}${c(b0, b1)}`
-    }
-  }
-  return '#00ffaa'
-}
+type Seg = { t: string; c?: string; b?: boolean }
 
-async function workspace($: EngineInterface): Promise<string> {
-  const ws = await $.env.get('OUTREACH_WS')
-  const home = (await $.env.get('HOME')) ?? ''
+function workspacePath(ws: string | undefined, home: string): string {
   const raw = ws && ws.length ? ws : `${home}/Documents/cold-email`
   return raw.replace(/^~(?=\/|$)/, home)
 }
@@ -53,7 +42,7 @@ async function readOr($: EngineInterface, path: string): Promise<string> {
 }
 
 async function load($: EngineInterface): Promise<Files> {
-  const ws = await workspace($)
+  const ws = workspacePath(await $.env.get('OUTREACH_WS'), (await $.env.get('HOME')) ?? '')
   let round: Files['round'] = null
   const roundsDir = `${ws}/rounds`
   if (await $.fs.exists(roundsDir)) {
@@ -94,19 +83,43 @@ async function refresh($: EngineInterface, tick: number): Promise<void> {
   await update($, snap, () => next)
 }
 
-function clock(ms: number): string {
+async function showDetails($: EngineInterface, ms: number): Promise<void> {
+  const now = await $.clock.now()
+  await update($, detailsUntil, () => now + ms)
+}
+
+function hhmm(ms: number): string {
   const d = new Date(ms)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 function pct(n: number, of: number): string {
-  return of ? `${((100 * n) / of).toFixed(1)}%` : '0.0%'
+  return of ? `${((100 * n) / of).toFixed(1)}%` : '0%'
+}
+
+// Split text into lines of at most n characters, breaking at spaces.
+function wrapText(t: string, n: number): string[] {
+  const out: string[] = []
+  let cur = ''
+  for (const word of t.split(' ')) {
+    const next = cur ? `${cur} ${word}` : word
+    if (next.length <= n) cur = next
+    else {
+      if (cur) out.push(cur)
+      cur = word.length > n ? word.slice(0, n - 1) + '…' : word
+    }
+  }
+  if (cur) out.push(cur)
+  return out.length ? out : ['']
+}
+
+function fit(t: string, n: number): string {
+  return t.length <= n ? t : t.slice(0, Math.max(0, n - 1)) + '…'
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'outreach', description: 'Open the live cold-outreach panel' })
+    await $.command.register({ name: 'outreach', description: 'Show the outreach panel with progress and settings' })
     let tick = 0
     void refresh($, tick)
     $.clock.every(REFRESH_MS, () => {
@@ -117,149 +130,142 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'outreach' }, async $ => {
+    await showDetails($, DETAILS_MS)
     await $.ui.open({ id: PANE, title: TITLE })
-    return { text: 'Outreach panel opened. It refreshes every 3 seconds from the workspace logs.' }
+    await refresh($, 0)
+    return { text: 'Outreach panel: today, the last 7 days and your settings.' }
   })
 
-  // Open the panel the moment the cold-outreach skill loads (slash command or Skill tool).
   on('skill.prompt', { skill: 'cold-outreach' }, async ($, e, next) => {
+    await showDetails($, DETAILS_MS)
     void $.ui.open({ id: PANE, title: TITLE })
     return next(e)
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
     const s = await read($, snap)
-    const cols = Math.max(28, e.props.bodyColumns)
-    const rule = <Text dimColor>{'─'.repeat(cols)}</Text>
+    const until = await read($, detailsUntil)
+    const w = Math.max(30, e.props.bodyColumns)
+    const inner = w - 4 // rim + space on each side
 
-    if (!s) {
+    // One raised card: lit rim on top and left, shadow rim on the right and bottom.
+    const line = (segs: Seg[]) => {
+      const used = segs.reduce((n, g) => n + g.t.length, 0)
       return (
-        <Box flexDirection="column">
-          <Text color={CYAN} bold>◈ COLD OUTREACH</Text>
-          <Text dimColor>⟨ linking to workspace… ⟩</Text>
-        </Box>
+        <Text>
+          <Text color={RIM_LIGHT} backgroundColor={SURFACE}>▌ </Text>
+          {segs.map(g => (
+            <Text color={g.c ?? INK} bold={g.b} backgroundColor={SURFACE}>{g.t}</Text>
+          ))}
+          <Text backgroundColor={SURFACE}>{' '.repeat(Math.max(0, inner - used))}</Text>
+          <Text color={RIM_DARK} backgroundColor={SURFACE}> ▐</Text>
+        </Text>
       )
     }
+    const card = (key: string, rows: Seg[][]) => (
+      <Box key={key} flexDirection="column" marginBottom={1}>
+        <Text color={RIM_LIGHT}>{' ' + '▄'.repeat(w - 2) + ' '}</Text>
+        {rows.map(r => line(r))}
+        <Text color={RIM_DARK}>{' ' + '▀'.repeat(w - 2) + ' '}</Text>
+      </Box>
+    )
+    const label = (t: string): Seg => ({ t: t.padEnd(12), c: MUTED })
 
-    const barW = Math.max(10, Math.min(30, cols - 20))
+    if (!s) {
+      return card('wait', [[{ t: 'Outreach', c: ACCENT, b: true }], [{ t: 'Reading your logs…', c: MUTED }]])
+    }
+
+    // Today
     const killed = s.todaySent > 0 && (100 * s.todayBounced) / s.todaySent > s.stopPct
-    const state = killed ? RED : s.todaySent >= s.hi ? AMBER : s.todaySent >= s.lo ? GREEN : SKY
+    const tone = killed ? BAD : s.todaySent >= s.hi ? WARN : s.todaySent >= s.lo ? GOOD : ACCENT
+    const barW = Math.max(8, inner - 12 - 10)
     const filled = Math.min(barW, Math.round((barW * s.todaySent) / Math.max(1, s.hi)))
     const tickAt = Math.min(barW - 1, Math.round((barW * s.lo) / Math.max(1, s.hi)))
-    const empty = Array.from({ length: barW - filled }, (_, i) => (filled + i === tickAt ? '│' : '░')).join('')
+    const groove = Array.from({ length: barW - filled }, (_, i) => (filled + i === tickAt ? '┃' : '━')).join('')
     const status = killed
-      ? '✗ kill switch: stop new sends'
+      ? `Pause: over ${s.stopPct}% bounced`
       : s.todaySent >= s.hi
-        ? '✓ daily max reached'
+        ? 'Done for today'
         : s.todaySent >= s.lo
-          ? '✓ in range'
-          : `${s.lo - s.todaySent} to min · ${s.hi - s.todaySent} to max`
+          ? `On target · ${s.hi - s.todaySent} left`
+          : `${s.lo - s.todaySent} to go today`
     const allPct = s.allSent ? (100 * s.allBounced) / s.allSent : 0
+    const dot = s.tick % 2 === 0 ? GOOD : '#5fae84'
+
+    const today: Seg[][] = [
+      [{ t: 'Today', c: ACCENT, b: true }, { t: ' '.repeat(Math.max(1, inner - 12)) }, { t: '● ', c: dot }, { t: hhmm(s.updatedAt), c: MUTED }],
+      [{ t: fit(s.sender, inner), c: MUTED }],
+      [],
+      [label('New emails'), { t: '━'.repeat(filled), c: tone }, { t: groove, c: TRACK }, { t: ` ${s.todaySent}`, b: true }, { t: ` / ${s.lo}-${s.hi}`, c: MUTED }],
+      [{ t: ' '.repeat(12) }, { t: fit(status, inner - 12), c: tone }],
+      [label('Bounces'), { t: `${s.todayBounced} of ${s.todaySent} today`, c: killed ? BAD : s.todayBounced ? WARN : INK }, { t: fit(` · limit ${s.stopPct}%`, inner - 30), c: MUTED }],
+      [label('Follow-ups'), { t: `${s.todayFu} sent today`, c: INK }, { t: ' · ', c: MUTED }, { t: `${s.dueFu1 + s.dueFu2} due`, c: s.dueFu1 + s.dueFu2 ? WARN : GOOD }],
+      [label('Replies'), { t: `${s.replies}`, c: ACCENT, b: true }, { t: ` (${pct(s.replies, s.allSent)} of emails)`, c: MUTED }],
+      [label('All time'), { t: `${s.allSent} sent`, c: INK }, { t: ' · ', c: MUTED }, { t: `${s.allBounced} bounced (${allPct.toFixed(1)}%)`, c: allPct > s.stopPct ? BAD : GOOD }],
+      [{ t: ' '.repeat(12) }, { t: `${s.allFu} follow-ups`, c: INK }],
+    ]
+    if (s.error) today.push([{ t: fit(`Couldn't read a file: ${s.error}`, inner), c: WARN }])
+
+    const showing = until > s.updatedAt
+    const toggle = (
+      <Box key="toggle" justifyContent="flex-end" marginBottom={1}>
+        {showing ? (
+          <Button key="hide" label="Hide details" onPress={() => update($, detailsUntil, () => 0)} />
+        ) : (
+          <Button key="show" label="Progress & settings" onPress={() => update($, detailsUntil, () => FOREVER)} />
+        )}
+      </Box>
+    )
+
+    if (!showing) {
+      return <Box flexDirection="column" width={w}>{card('today', today)}{toggle}</Box>
+    }
+
+    // Last 7 days
     const peak = Math.max(s.hi, ...s.days.map(d => d.sent + d.fu))
-    const dayW = Math.max(6, cols - 22)
-    const pulse = s.tick % 2 === 0 ? GREEN : '#00a860'
-    const r = s.round
+    const dayW = Math.max(6, inner - 7 - 13)
+    const week: Seg[][] = [
+      [{ t: 'Last 7 days', c: ACCENT, b: true }, { t: '   ━ new  ', c: BLUE }, { t: '━ follow-ups', c: ACCENT }],
+      [],
+      ...s.days.map(d => {
+        const n = Math.round((dayW * d.sent) / peak)
+        const f = Math.min(dayW - n, Math.round((dayW * d.fu) / peak))
+        const segs: Seg[] = [
+          { t: d.label.padEnd(7), c: MUTED },
+          { t: '━'.repeat(n), c: BLUE },
+          { t: '━'.repeat(f), c: ACCENT },
+          { t: '·'.repeat(Math.max(0, dayW - n - f)), c: TRACK },
+          { t: String(d.sent).padStart(4), c: d.sent ? INK : MUTED },
+          { t: String(d.fu).padStart(4), c: d.fu ? ACCENT : MUTED },
+        ]
+        segs.push(d.bounced ? { t: ` ✗${d.bounced}`.padEnd(5), c: BAD } : { t: '     ' })
+        return segs
+      }),
+      [{ t: ' '.repeat(7 + dayW), c: MUTED }, { t: ' new', c: MUTED }, { t: '  fu', c: MUTED }, { t: ' bnc', c: MUTED }],
+    ]
+    if (s.round) {
+      const r = s.round
+      week.push([], [{ t: 'This round  ', c: MUTED }, { t: `${r.pass} found`, c: GOOD }, { t: ' · ', c: MUTED }, { t: `${r.fail} skipped`, c: INK }, { t: ' · ', c: MUTED }, { t: `${r.reveal} need a contact`, c: WARN }])
+    }
+
+    // Settings
+    const settings: Seg[][] = [
+      [{ t: 'Your settings', c: ACCENT, b: true }],
+      [],
+      ...s.settings.flatMap(x =>
+        wrapText(x.value, inner - 12).map((part, i): Seg[] => [
+          i === 0 ? label(x.label) : { t: ' '.repeat(12) },
+          { t: part, c: INK },
+        ])),
+    ]
 
     return (
-      <Box flexDirection="column" width={cols}>
-        <Box justifyContent="space-between">
-          <Text color={CYAN} bold>◈ COLD OUTREACH</Text>
-          <Text>
-            <Text color={pulse}>●</Text>
-            <Text dimColor> live {clock(s.updatedAt)}</Text>
-          </Text>
-        </Box>
-        <Text>
-          {Array.from({ length: cols }, (_, i) => (
-            <Text color={lerp(i / Math.max(1, cols - 1))}>▄</Text>
-          ))}
-        </Text>
-        <Text dimColor wrap="truncate-end">{s.sender}</Text>
-        {s.error && <Text color={AMBER} wrap="truncate-end">⚠ {s.error}</Text>}
-
-        <Box marginTop={1}><Text color={BLUE} bold>TODAY</Text></Box>
-        <Text>
-          <Text dimColor>New      </Text>
-          <Text color={state}>{'█'.repeat(filled)}</Text>
-          <Text dimColor>{empty}</Text>
-          <Text bold> {s.todaySent}</Text>
-          <Text dimColor> / {s.lo}-{s.hi}</Text>
-        </Text>
-        <Text color={state} wrap="truncate-end">{'         '}{status}</Text>
-        <Text>
-          <Text dimColor>Bounces  </Text>
-          <Text color={killed ? RED : s.todayBounced ? AMBER : GREEN}>
-            {s.todayBounced} of {s.todaySent} · {pct(s.todayBounced, s.todaySent)}
-          </Text>
-          <Text dimColor> (stop &gt;{s.stopPct}%)</Text>
-        </Text>
-        <Text>
-          <Text dimColor>Follow   </Text>
-          <Text color={CYAN}>{s.todayFu} sent</Text>
-          <Text dimColor> · due </Text>
-          <Text color={s.dueFu1 ? AMBER : GREEN}>FU1 {s.dueFu1}</Text>
-          <Text dimColor> · </Text>
-          <Text color={s.dueFu2 ? AMBER : GREEN}>FU2 {s.dueFu2}</Text>
-        </Text>
-
-        <Box marginTop={1}>{rule}</Box>
-        <Text color={BLUE} bold>LAST 7 DAYS <Text dimColor>█ new ▒ follow-up</Text></Text>
-        {s.days.map(d => {
-          const n = Math.round((dayW * d.sent) / peak)
-          const f = Math.min(dayW - n, Math.round((dayW * d.fu) / peak))
-          return (
-            <Text>
-              <Text dimColor>{d.label} </Text>
-              <Text color={SKY}>{'█'.repeat(n)}</Text>
-              <Text color={CYAN} dimColor>{'▒'.repeat(f)}</Text>
-              <Text>{' '.repeat(Math.max(0, dayW - n - f))}</Text>
-              <Text>{String(d.sent).padStart(4)}</Text>
-              <Text dimColor>{String(d.fu).padStart(4)}</Text>
-              <Text color={d.bounced ? RED : undefined} dimColor={!d.bounced}>
-                {d.bounced ? ` ✗${d.bounced}` : '   '}
-              </Text>
-            </Text>
-          )
-        })}
-
-        <Box marginTop={1}>{rule}</Box>
-        <Text color={BLUE} bold>ROUND{r ? <Text dimColor> {r.name}</Text> : ''}</Text>
-        {r ? (
-          <Box flexDirection="column">
-            <Text>
-              <Text color={GREEN}>✓ {r.pass} pass</Text>
-              <Text dimColor> · </Text>
-              <Text color={RED}>✗ {r.fail} fail</Text>
-              <Text dimColor> · </Text>
-              <Text color={AMBER}>◆ {r.reveal} reveal</Text>
-              <Text dimColor> · </Text>
-              <Text color={SKY}>→ {r.apply} apply</Text>
-            </Text>
-            <Text dimColor>{r.drafts} drafts in folders</Text>
-            {r.topFail && <Text dimColor wrap="truncate-end">top fail: {r.topFail}</Text>}
-          </Box>
-        ) : (
-          <Text dimColor>no round yet: ask for a new round</Text>
-        )}
-
-        <Box marginTop={1}>{rule}</Box>
-        <Text color={BLUE} bold>ALL TIME</Text>
-        <Text>
-          <Text bold>{s.allSent}</Text>
-          <Text dimColor> sent · </Text>
-          <Text color={allPct > s.stopPct ? RED : GREEN}>{s.allBounced} bounced {allPct.toFixed(1)}%</Text>
-        </Text>
-        <Text>
-          <Text color={CYAN}>{s.replies} replies</Text>
-          <Text dimColor> ({pct(s.replies, s.allSent)}) · </Text>
-          <Text color={CYAN}>{s.allFu}</Text>
-          <Text dimColor> follow-ups</Text>
-        </Text>
-
-        <Box marginTop={1}>
-          <Text dimColor>⟨ refresh 3s · /outreach ⟩</Text>
-        </Box>
+      <Box flexDirection="column" width={w}>
+        {card('today', today)}
+        {card('week', week)}
+        {card('settings', settings)}
+        {toggle}
       </Box>
     )
   })

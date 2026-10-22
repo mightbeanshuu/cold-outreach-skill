@@ -47,6 +47,7 @@ const PANE = {
 
 test('the panel shows today, follow-ups, the latest round and all-time numbers', async ($, on) => {
   on('command.register', () => ({ value: { command: 'outreach' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('env.get', (_, e) => ({ value: e.name === 'HOME' ? '/home/u' : undefined }))
   on('clock.now', () => ({ value: NOW }))
@@ -57,22 +58,32 @@ test('the panel shows today, follow-ups, the latest round and all-time numbers',
     ({ value: (DIRS[e.path] ?? []).map(d => ({ ...d, size: 0, mtimeMs: 0, isLink: false })) }))
 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  await new Promise(r => setTimeout(r, 50))
+  await new Promise(r => (globalThis as unknown as { setTimeout: (f: () => void, ms: number) => void }).setTimeout(() => r(undefined), 50))
 
   const ui = await $.ui.mount(PANE)
   const text = async (re: RegExp) => (await ui.find({ type: 'Text', text: re }))?.text
 
-  expect(await text(/me@college/)).toBe('me@college.ac.in')
-  expect(await text(/ 2 \/ 30-40/)).toContain(' 2 / 30-40')
-  expect(await text(/kill switch/)).toContain('kill switch')      // 1 of 2 bounced today, over 3%
-  expect(await text(/FU1 \d/)).toBeDefined()
-  expect(await text(/1 sent/)).toContain('1 sent')                // one follow-up today
-  expect(await text(/2026-10-22-yc/)).toContain('2026-10-22-yc')  // newest round, not the older one
-  expect(await text(/1 pass/)).toContain('1 pass')
-  expect(await text(/1 fail/)).toContain('1 fail')
-  expect(await text(/1 reveal/)).toContain('1 reveal')
-  expect(await text(/drafts in folders/)).toBe('1 drafts in folders')
-  expect(await text(/bounced 25\.0%/)).toContain('1 bounced 25.0%') // 1 of 4 all time
-  expect(await text(/replies/)).toContain('1 replies')
+  // details are hidden until the skill loads or /outreach runs: only the Today card
+  expect(await text(/me@college/)).toContain('me@college.ac.in')
+  expect(await text(/New emails/)).toContain('2 / 30-40')           // 2 new emails today
+  expect(await text(/Pause:/)).toContain('Pause: over 3% bounced')    // 1 of 2 bounced
+  expect(await text(/Follow-ups/)).toContain('1 sent today')          // one follow-up today
+  expect(await text(/All time/)).toContain('1 bounced (25.0%)')       // 1 of 4 all time
+  expect(await text(/Replies/)).toContain('1 (25.0% of emails)')
+  expect(await text(/Last 7 days/)).toBeUndefined()
   await ui.unmount()
+
+  // /outreach shows progress and settings too
+  await $.command.run({
+    command: 'outreach', args: '', origin: { kind: 'composer' },
+    presentation: { isFullscreen: true, columns: 120 },
+  })
+  const full = await $.ui.mount(PANE)
+  const ftext = async (re: RegExp) => (await full.find({ type: 'Text', text: re }))?.text
+  expect(await ftext(/Last 7 days/)).toContain('Last 7 days')
+  expect(await ftext(/This round/)).toContain('1 found · 1 skipped · 1 need a contact')
+  expect(await ftext(/Your settings/)).toContain('Your settings')
+  expect(await ftext(/Per day/)).toContain('30-40 new emails · pause at 3%')
+  expect(await ftext(/Thu 22/)).toContain('Thu 22')
+  await full.unmount()
 })
