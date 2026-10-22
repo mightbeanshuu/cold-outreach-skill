@@ -26,6 +26,6 @@ Never send a cold email to a company with a live thread; add its slug to `target
 3. Dry run checks: greeting reused, body clean, in-thread. Then `python3 scripts/mkfu.py send <queue> 0 50` in batches of ~50 with the built-in 8–15 s random gap. `window.__fu.stop = true` halts it.
 4. Per item the runner: searches `in:sent to:<email>`, opens the thread whose subject matches, confirms the recipient, **skips if anyone else posted (reply/bounce) or a follow-up already exists**, types the follow-up from `fu1_text`/`fu2_text`, sends, waits for the toast. Result codes: `SENT`, `HAS_REPLY:<who>`, `ALREADY_FU`, `NO_THREAD`, `WRONG_THREAD`, `WRONG_ACCOUNT`, `NO_TOAST`.
 5. After each batch: save results to `followups/<date>/results.jsonl`, check bounces and new replies, stop on any Gmail warning. `HAS_REPLY` items are replies you may have missed: open and triage them.
-6. Finally `python3 scripts/mark_outcome.py --fu-sent fu1 <results.jsonl>` appends "; FU1 <date> sent" to those rows.
+6. Finally `python3 scripts/log_followup.py --stage fu1 <results.jsonl>`. It writes one row per attempt to **FOLLOWUP-LOG.csv** (date, time, stage, company, email, subject, result, detail, sender) and appends "; FU1 <date> sent" to the matching SEND-LOG rows. To import old results that are already marked in SEND-LOG, add `--no-mark --date <day they were sent>`.
 
 The runner state lives in the page (`window.__fu`), so a page reload loses it; results are mirrored to `localStorage.fu_results`. If the extension drops mid-batch the in-page loop keeps going; reconnect and poll.

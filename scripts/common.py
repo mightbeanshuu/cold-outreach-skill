@@ -109,3 +109,32 @@ def college_mail_problem(prof):
     if not addr.endswith("@" + dom) and not addr.endswith("." + dom):
         return f"sending.gmail_address {addr or '(empty)'} is not a college address @{dom}"
     return ""
+
+
+FU_FIELDS = ["date", "time", "stage", "company", "email", "subject", "result", "detail", "sender"]
+
+
+def read_fu_log(ws):
+    f = ws / "FOLLOWUP-LOG.csv"
+    if not f.exists():
+        return []
+    with open(f, newline="") as fh:
+        return list(csv.DictReader(fh))
+
+
+def append_fu_log(ws, row):
+    f = ws / "FOLLOWUP-LOG.csv"
+    new = not f.exists()
+    with open(f, "a", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=FU_FIELDS, extrasaction="ignore")
+        if new:
+            w.writeheader()
+        w.writerow(row)
+
+
+def daily_range(prof):
+    """(min, max) new cold emails per day. The user picks the range at setup; max is the hard cap."""
+    s = prof.get("sending", {})
+    hi = int(s.get("daily_cap", 40))
+    lo = int(s.get("daily_min", round(hi * 0.75)))
+    return min(lo, hi), hi

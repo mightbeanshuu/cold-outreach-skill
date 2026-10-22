@@ -42,7 +42,8 @@ if prof.exists():
     line(not issue, True, f"sender is a college address ({p.get('sending', {}).get('gmail_address', '?')})", issue)
     src = p.get("resumes", {}).get("source_html", "")
     line(bool(src) and Path(src).expanduser().exists(), False, "master resume HTML for tailoring", "Claude can build it from your PDF")
-for f, fix in [("SEND-LOG.csv", "copy assets/SEND-LOG.header.csv"), ("EXCLUDE.txt", "touch it")]:
+for f, fix in [("SEND-LOG.csv", "copy assets/SEND-LOG.header.csv"), ("EXCLUDE.txt", "touch it"),
+               ("FOLLOWUP-LOG.csv", "copy assets/FOLLOWUP-LOG.header.csv")]:
     line((ws / f).exists(), True, f, fix)
 print("\nAlso required (Claude checks in-session): Claude in Chrome connected to YOUR browser, college Gmail signed in there.")
 sys.exit(1 if bad else 0)

@@ -36,7 +36,7 @@ Run the prerequisites check first (SKILL.md, "Prerequisites"). Then ask these ca
 
 **Call A4: contacts and sending**
 1. [Fallback] "When the site and GitHub show no address, use reveal tools in Chrome?" ContactOut + SignalHire (Recommended, if you're signed in to both) / SignalHire only / ContactOut only / Free routes only.
-2. [Daily cap] "Max new cold emails a day?" 40 (Recommended) / 20 / 60.
+2. [Per day] "How many new cold emails per day? (a range: aim for the low end, never pass the high end)" **30-40 (Recommended)** / 15-25 (new or cautious account) / 40-50 / Other: type a custom range like "20-35". Save as `sending.daily_min` / `daily_cap`. Above 50 a day, warn that Gmail may throttle a college account and ask once more to confirm. Follow-ups in existing threads don't count against it.
 3. [Follow-ups] "Follow-ups?" FU1 on day 4 + FU2 on day 11 (Recommended) / FU1 only / None.
 4. [CGPA] "Share your CGPA when a recruiter asks?" Yes: type it under Other / No.
 
@@ -73,11 +73,22 @@ Defined in SKILL.md Step 1: experience range, funding filter, pay bar, contact f
 | Reply needs a call | Reply | "<Name> at <Co> wants a call: <times>. What should I do?" | "I'll book it: draft a reply with my slot" / Ask for other times |
 | Reply below pay bar or unpaid | Reply | "<Co> offers <pay>, below your bar. Reply?" | Politely decline / Ask about PPO or pay / Ignore |
 | Follow-ups due | FU | "N follow-ups are due. Send?" | Dry-run 2, then send the rest (Recommended) / Show me the list first / Not today |
+| Start of a send session | Today | "Today: <n> sent, range <lo>-<hi>. How many to send now?" | Up to the minimum (<lo-n>) (Recommended) / Up to the max (<hi-n>) / A custom number (Other) |
 | Bar or filter changed | Save | "Save <change> to your profile or this round only?" | This round only (Recommended) / Save to profile |
 
 ## D. Showing everything in the terminal
-Ask nothing that the user can't judge from what's on screen. Before each decision, print what it's about:
+Ask nothing that the user can't judge from what's on screen. Before each decision, print what it's about.
+
+**Style.** Script output (dashboard, review table, drafts) goes in a ```text block exactly as printed, so the boxes and bars line up. Claude's own messages use:
+- a stage line at the start of each step: `━━ Step 2 · Research ━━` with one line on what's happening;
+- ✓ done, ✗ failed or blocked, ⚠ needs attention, → next action;
+- short markdown tables for lists of companies, people or replies; numbers before names;
+- no walls of text: at most 3 lines of prose between a table and a question.
+
+Print:
+- At the start of every session: `python3 scripts/stats.py` (the dashboard: today vs the daily range, bounces, follow-ups due, replies, last 7 days).
 - After each research agent finishes: `PASS n · FAIL n (top reasons) · NEED-REVEAL n · APPLY-LINK n`.
 - Before the Send question: the output of `python3 scripts/review.py <round_dir>` and, if they ask, `--full` for every draft's subject and body.
-- After each send batch: each recipient with ✓ sent or ✗ and the reason, then the day's totals from `stats.py`.
+- After each send batch: each recipient with ✓ sent or ✗ and the reason, then the `today ███░ n / lo-hi` line that `log_sent.py` prints.
+- After each follow-up batch: the summary line from `log_followup.py`.
 - End of session: the report in SKILL.md "Report format".

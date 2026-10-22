@@ -14,7 +14,8 @@ Your first actions, before any research or browsing:
    - **Missing or incomplete** (placeholders like "Your Name", `XXXX` links, an empty college domain): ask the setup questions right away with `AskUserQuestion`, following Part A of `references/terminal-prompts.md`. That covers the college sending mail, graduation year, **resume**, GitHub, **experience range (0-3 recommended)**, start dates, roles, locations, **funding filter**, **pay bar**, contact fallback (ContactOut / SignalHire), daily cap, follow-ups, and the proof points (achievements and project facts, confirmed true by the user).
    - **Present:** print a short summary of the saved requirements in the terminal (sender, grad year, resume, experience range, roles, funding filter, pay bar, contact fallback, daily cap). Then ask one question: "Use these for this round?" with options *Use as is (Recommended)* / *Change some* / *Redo the full setup*. On "Change some", ask only the questions for the parts they pick.
 3. **Run `python3 scripts/preflight.py`** and show the checklist. Fix any FAIL with the user.
-4. Only then go on to the round brief (Step 1), or to whatever the user asked for (send, follow-ups, replies).
+4. **Show the dashboard:** `python3 scripts/stats.py` in a ```text block. It shows today's new emails against the user's daily range, bounces against the kill switch, follow-ups due and sent, replies, and the last 7 days.
+5. Only then go on to the round brief (Step 1), or to whatever the user asked for (send, follow-ups, replies).
 
 Pre-fill every option you can from the conversation, memory, the existing profile, the resume and GitHub, so the user mostly confirms rather than types. Never start emailing on assumptions the user hasn't seen.
 
@@ -69,7 +70,8 @@ Read each reference file when you reach its step, not before.
 ```
 <workspace>/                    # profile.toml [workspace].path, default ~/Documents/cold-email
   profile.toml                  # the user's facts and preferences (never committed to the skill repo)
-  SEND-LOG.csv                  # one row per email sent; source of truth for dedupe and follow-ups
+  SEND-LOG.csv                  # one row per new email sent; source of truth for dedupe and follow-up due dates
+  FOLLOWUP-LOG.csv              # one row per follow-up attempt: date, time, FU1/FU2, company, email, result, detail
   EXCLUDE.txt                   # one company slug per line; already contacted or ruled out
   .cache/                       # yc.json (YC directory mirror), github_projects.json (user's repos)
   rounds/<YYYY-MM-DD>-<name>/
@@ -96,7 +98,10 @@ Scripts are in `scripts/`, stdlib Python plus `gh`, `curl`, `whois`, `dig` and C
 | `render_resume.sh <html>` | G7 | HTML → PDF, fails if not exactly 1 page |
 | `upload_resume.py <round>` | G7 | Drive upload, logged-out byte check, fills `{RESUME_LINK}` |
 | `mkurl.py`, `mkjs.py send` | send | Gmail compose links and the guarded send JS |
-| `log_sent.py`, `mark_outcome.py`, `stats.py` | log | SEND-LOG rows, bounces, kill-switch numbers |
+| `log_sent.py` | log | SEND-LOG rows + EXCLUDE, then today's count against the daily range |
+| `log_followup.py --stage fu1 <results.jsonl>` | log | FOLLOWUP-LOG rows for every follow-up attempt, and marks SEND-LOG |
+| `mark_outcome.py` | log | bounces and replies on SEND-LOG rows (dated backup first) |
+| `stats.py [--need N]` | dashboard | today vs daily range, bounces, kill switch, follow-ups, replies, last 7 days; `--need N` exits 1 if N more would pass the max |
 | `build_fu_queue.py`, `mkfu.py` | follow-ups | FU1/FU2 queue and in-thread runner |
 | `check_links.py` | intake | every resume link opens logged-out |
 | `preflight.py` | prerequisites | local tools, gh auth, Chrome, gcloud, profile, college sender, SEND-LOG/EXCLUDE |
@@ -159,12 +164,13 @@ Then ask the **Send** question (terminal-prompts.md, Part C): send all 8/8 GREEN
 
 ## Step 5: Send
 
+Before each batch, run `python3 scripts/stats.py --need <batch size>`. If it exits non-zero (the daily max would be passed, or the kill switch is on), don't send. Show why and ask. At the start of a send session, ask the "Today" question (terminal-prompts.md, Part C) to pick how many to send now within the range.
 Print each result in the terminal as it happens (✓ recipient, or ✗ recipient and the reason). Follow `references/sending-chrome.md` exactly: account check (the tab title must show the college address), compose deeplink, guarded send JS, toast check, discard the refilled compose. `python3 scripts/mkjs.py send <email>` prints the send JS. Send in groups of about 4 per browser call. Never re-send after a timeout until you've checked Sent for that recipient.
 
 ## Step 6: Verify and log
 
 - 10 to 30 minutes after a batch, match mailer-daemon messages to recipients (`sending-chrome.md`, "Bounce check"), then `python3 scripts/stats.py` for the day's bounce rate against the kill switch.
-- `python3 scripts/log_sent.py <round_dir> <slug> ...` right after each confirmed send (SEND-LOG + EXCLUDE). `python3 scripts/mark_outcome.py <email> "BOUNCED <date> (...)"` for bounces.
+- `python3 scripts/log_sent.py <round_dir> <slug> ...` right after each confirmed send (SEND-LOG + EXCLUDE). It prints `today ███░ n / lo-hi`; show that line. `python3 scripts/mark_outcome.py <email> "BOUNCED <date> (...)"` for bounces.
 - Save a one-line state note to memory, or tell the user, so the next session can resume.
 
 ## Step 7: Replies and follow-ups
@@ -172,7 +178,7 @@ Print each result in the terminal as it happens (✓ recipient, or ✗ recipient
 Triage replies by type (`references/followups.md`): details asked → answer from the profile in-thread; call → the user books it; unpaid or below bar → ask the user; not hiring / out of office → log it.
 
 FU1 about `followup.fu1_after_days` after the first email, FU2 about `fu2_after_days` after, both **in the same thread**, to named people who haven't replied:
-`build_fu_queue.py --stage fu1 --due <date>` → print the queue → ask the "FU" question → `mkfu.py dry <queue> 1 2` → `mkfu.py send <queue> A B`.
+`build_fu_queue.py --stage fu1 --due <date>` → print the queue → ask the "FU" question → `mkfu.py dry <queue> 1 2` → `mkfu.py send <queue> A B` → save the runner's results to `followups/<date>-fu1/results.jsonl` → `log_followup.py --stage fu1 <results.jsonl>` (FOLLOWUP-LOG + SEND-LOG).
 
 ## Hard rules
 
@@ -184,7 +190,8 @@ Each comes from a real failure; the reason is there so you can judge edge cases.
   - No SMTP/RCPT probing, no guessing first.last@ patterns, no addresses an LLM produced (one run invented 39 of 40).
   - ContactOut / SignalHire only after the free ladder failed, only if listed in `tools.paid_contact_tools`, only in the user's signed-in browser, only in the main session.
 - **Kill switch.** Stop new cold sends for the day if the bounce rate passes `sending.bounce_stop_pct`, Gmail shows any unusual-activity / limit banner, or spam complaints appear. Tell the user; resume the next day at lower volume with the safest contact types.
-- **Daily cap.** At most `sending.daily_cap` new cold emails a day (default 40). Follow-ups are separate but also batched.
+- **Daily range.** The user picks how many new cold emails per day as a range at setup (`sending.daily_min`-`daily_cap`, recommended 30-40). Aim for the minimum, never pass the max: `stats.py --need N` before every batch. Follow-ups are logged separately in FOLLOWUP-LOG and don't count against it, but they are batched too.
+- **Every send is logged.** New emails go to SEND-LOG via `log_sent.py` right after the toast; follow-ups go to FOLLOWUP-LOG via `log_followup.py` after each batch. An unlogged send gets emailed twice later.
 - **The user decides to send.** Draft and queue freely; send only after the user has said go for this batch. If a permission prompt or the auto-mode classifier denies a send, stop, say what's queued, and ask. Never route around a denial.
 - **No Claude in Chrome, no outreach.** Without a connected browser on the user's own machine, stop at the prerequisites and say what's missing.
 - **The user's own browser and accounts only.** Never type passwords or OTPs, never create accounts. Check `list_connected_browsers` every session.
@@ -196,8 +203,8 @@ Each comes from a real failure; the reason is there so you can judge edge cases.
 
 ## Report format
 
-End each work session with:
-- sent today (new and follow-ups), delivered, bounced and bounce %;
+End each work session with the dashboard (`python3 scripts/stats.py` in a ```text block), then:
+- sent today: new emails (against the daily range) and follow-ups, delivered, bounced and the bounce %;
 - passes by funding class, and how many companies failed validation (with the top reasons);
 - reveal credits used and left;
 - replies and what each needs;

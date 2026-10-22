@@ -4,7 +4,8 @@ usage: log_sent.py <round_dir> <slug> [slug ...] [--date YYYY-MM-DD] [--note "te
 Only run this for sends whose "Message sent" toast you saw (or that you found in Sent)."""
 import datetime as dt, sys
 from pathlib import Path
-from common import ws_arg, load_profile, parse_email, read_log, append_log, first_name
+from common import ws_arg, load_profile, parse_email, read_log, append_log, first_name, daily_range
+import ui
 
 ws, argv = ws_arg(sys.argv[1:])
 def opt(name, default=None):
@@ -37,3 +38,9 @@ for s in slugs:
         with open(excl_f, "a") as fh: fh.write(s + "\n")
         have.add(s)
     print("logged", s, e["to"])
+
+lo, hi = daily_range(prof)
+n = sum(1 for r in read_log(ws) if r["date_sent"] == date.isoformat())
+mark = ui.BAD + " over the daily max" if n > hi else ui.OK + " daily max reached" if n == hi else \
+    ui.OK + " in range" if n >= lo else f"{lo - n} to the daily minimum"
+print(f"today {ui.bar(n, hi, 20, lo)} {n} / {lo}-{hi}  {mark}")

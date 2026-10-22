@@ -16,7 +16,25 @@ Each company goes through seven gates, cheapest first, and only companies that p
 | G6 Unrejectable pitch | an 8-point test: specific hook, best-fit proof, numbers, risk removed, one easy ask |
 | G7 Tailored resume | one page per company, leading with the best-fit project, uploaded with a verified public link |
 
-Then it sends from your **college Gmail** through Claude in Chrome, checks bounces against a kill switch, logs everything, triages replies and sends in-thread follow-ups.
+Then it sends from your **college Gmail** through Claude in Chrome, checks bounces against a kill switch, triages replies and sends in-thread follow-ups.
+
+**Logs and daily range.**
+- Every new email goes to `SEND-LOG.csv`, and every follow-up attempt goes to `FOLLOWUP-LOG.csv`.
+- You pick how many new emails a day as a range (30-40 recommended). The skill aims for the low end and never passes the high end.
+
+**In the terminal.** `python3 scripts/stats.py` shows a dashboard like this:
+
+```text
+╭─ cold-outreach · 2026-10-20 · you@college.ac.in ────────────────────────────────────╮
+│ New emails  ██████████████████░░░░░░░░   28 / 30-40   2 more to reach the minimum  │
+│ Bounces     0 of 28 today  (0.0%, stop above 3%)                                   │
+│ Follow-ups  sent today 41  ·  due now: FU1 12, FU2 3                               │
+│ Replies     8 total  (1.7% of sends)                                               │
+│ All time    479 sent  ·  12 bounced (2.5%)  ·  196 follow-ups                      │
+╰────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+`review.py` prints each round as a table plus every draft in a box. All questions are asked in the terminal.
 
 ## Install
 
@@ -25,6 +43,7 @@ git clone git@github.com:<you>/cold-outreach-skill.git ~/.claude/skills/cold-out
 mkdir -p ~/Documents/cold-email
 cp ~/.claude/skills/cold-outreach/assets/profile.example.toml ~/Documents/cold-email/profile.toml
 cp ~/.claude/skills/cold-outreach/assets/SEND-LOG.header.csv ~/Documents/cold-email/SEND-LOG.csv
+cp ~/.claude/skills/cold-outreach/assets/FOLLOWUP-LOG.header.csv ~/Documents/cold-email/FOLLOWUP-LOG.csv
 touch ~/Documents/cold-email/EXCLUDE.txt
 ```
 
@@ -63,8 +82,8 @@ SKILL.md                      workflow + hard rules (loaded when the skill trigg
 PROMPTS.md                    copy-paste prompts for every stage
 references/                   terminal-prompts (every question the skill asks), intake, targeting, validation, contacts, pitch, tailored-resume, sending-chrome,
                               followups, research-spec-template
-scripts/                      preflight, review, eligibility, check_company, github_projects, render_resume, upload_resume, mkurl, lint_email,
+scripts/                      ui (boxes/tables/bars), stats (dashboard), log_followup, preflight, review, eligibility, check_company, github_projects, render_resume, upload_resume, mkurl, lint_email,
                               dedupe, log_sent, mark_outcome, stats, check_links, ats_scan, build_fu_queue, mkfu,
                               mkjs (+ js/ send, bounce scan, follow-up runner)
-assets/                       profile.example.toml, SEND-LOG.header.csv
+assets/                       profile.example.toml, SEND-LOG.header.csv, FOLLOWUP-LOG.header.csv
 ```
