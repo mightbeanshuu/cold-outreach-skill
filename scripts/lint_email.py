@@ -15,8 +15,10 @@ resumes = {k: v for k, v in prof.get("resumes", {}).items() if str(v).startswith
 sent = {r["email"].strip().lower() for r in read_log(ws) if r.get("email")}
 excl = excluded(ws)
 allowed_status = {"PUBLISHED-JD", "PUBLISHED-SITE", "PUBLISHED-PKG", "GH-ORG", "GH-MEMBER", "COMMIT-VERIFIED",
-                  "PUBLISHED", "REVEAL-CONTACTOUT", "REVEAL-SIGNALHIRE", "PAID-REVEAL"}
-reveal_tool = {"REVEAL-CONTACTOUT": "contactout", "REVEAL-SIGNALHIRE": "signalhire"}
+                  "PUBLISHED", "PUBLISHED-WEB", "REVEAL-CONTACTOUT", "REVEAL-SIGNALHIRE", "REVEAL-KASPR",
+                  "REVEAL-APOLLO", "PAID-REVEAL"}
+reveal_tool = {"REVEAL-CONTACTOUT": "contactout", "REVEAL-SIGNALHIRE": "signalhire", "REVEAL-KASPR": "kaspr",
+               "REVEAL-APOLLO": "apollo"}
 funding_ok = [f.lower() for f in prof.get("targets", {}).get("funding_filter", ["yc", "vc", "angel", "bootstrapped", "govt/grant"])]
 mail_issue = college_mail_problem(prof)
 if mail_issue:
