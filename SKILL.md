@@ -139,7 +139,7 @@ Then:
 
 ## Step 2: Research (G1 to G6, plus the resume HTML)
 
-Use at most `tools.max_agents` agents (default 2), split by source. The agent prompt is at the bottom of `references/research-spec-template.md`; it walks each company through the gates in order.
+Use at most `tools.max_agents` agents (default 2), split by source. If `inc42` is in the sources (or the user asks for Inc42 / well-funded startups), one agent, or both split by date window, works Inc42 funding coverage (`references/targeting.md` → "Inc42 agent"). The agent prompt is at the bottom of `references/research-spec-template.md`; it walks each company through the gates in order.
 
 Agents research and write files only. They never open Gmail and never use the reveal tools. Each one writes a PASS folder and its TSV line the moment a company passes, so work survives a crash or a rate limit, and stops at the cap in the spec.
 

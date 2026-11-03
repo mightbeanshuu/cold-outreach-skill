@@ -113,7 +113,7 @@ max_agents = 2
 # (site, JD, packages, GitHub org/members/commits) found nothing. Empty = never used. Options: "contactout", "signalhire".
 paid_contact_tools = []
 reveal_budget_per_round = 10             # stop revealing after this many attempts in a round
-sources = ["hiredoor", "yc-waas", "wellfound", "instahyre", "cutshort", "ats-api", "company-sites", "github-orgs"]
+sources = ["hiredoor", "yc-waas", "wellfound", "instahyre", "cutshort", "ats-api", "company-sites", "github-orgs"]   # add "inc42" for a dedicated Inc42 funding agent (references/targeting.md)
 yc_waas_logged_in = false                # the user must log in themselves
 
 [workspace]
